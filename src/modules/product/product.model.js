@@ -54,16 +54,19 @@ const Product = sequelize.define('Product', {
     field: 'category_id'
   },
   imageUrl: {
-    type: DataTypes.STRING,
-    field: 'image_url'
+    type: DataTypes.TEXT('long'),
+    field: 'image_url',
+    allowNull: true,
   },
   imageUrl2: {
-    type: DataTypes.STRING,
-    field: 'image_url2'
+    type: DataTypes.TEXT('long'),
+    field: 'image_url2',
+    allowNull: true,
   },
   imageUrl3: {
-    type: DataTypes.STRING,
-    field: 'image_url3'
+    type: DataTypes.TEXT('long'),
+    field: 'image_url3',
+    allowNull: true,
   },
   packageSize: {
     type: DataTypes.STRING,

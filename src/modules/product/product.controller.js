@@ -41,6 +41,23 @@ const getProductById = async (req, res) => {
   }
 };
 
+const fs = require('fs');
+const path = require('path');
+
+const getBase64FromFile = (file) => {
+  if (!file || !file.path) return null;
+  try {
+    const data = fs.readFileSync(file.path);
+    const base64 = data.toString('base64');
+    // Clean up the local file since we're storing in DB
+    fs.unlinkSync(file.path);
+    return `data:${file.mimetype};base64,${base64}`;
+  } catch (err) {
+    console.error('Error converting file to base64:', err);
+    return null;
+  }
+};
+
 // @desc    Create a product (Admin only)
 // @route   POST /api/products
 // @access  Private/Admin
@@ -59,11 +76,11 @@ const createProduct = async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       const imageFiles = req.files.filter(f => f.fieldname === 'image');
-      if (imageFiles[0]) img1 = `/uploads/${imageFiles[0].filename}`;
-      if (imageFiles[1]) img2 = `/uploads/${imageFiles[1].filename}`;
-      if (imageFiles[2]) img3 = `/uploads/${imageFiles[2].filename}`;
+      if (imageFiles[0]) img1 = getBase64FromFile(imageFiles[0]) || img1;
+      if (imageFiles[1]) img2 = getBase64FromFile(imageFiles[1]) || img2;
+      if (imageFiles[2]) img3 = getBase64FromFile(imageFiles[2]) || img3;
     } else if (req.file) {
-      img1 = `/uploads/${req.file.filename}`;
+      img1 = getBase64FromFile(req.file) || img1;
     }
 
     const product = await productService.createNewProduct(req.body, { img1, img2, img3 });
@@ -91,11 +108,11 @@ const updateProduct = async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       const imageFiles = req.files.filter(f => f.fieldname === 'image');
-      if (imageFiles[0]) img1 = `/uploads/${imageFiles[0].filename}`;
-      if (imageFiles[1]) img2 = `/uploads/${imageFiles[1].filename}`;
-      if (imageFiles[2]) img3 = `/uploads/${imageFiles[2].filename}`;
+      if (imageFiles[0]) img1 = getBase64FromFile(imageFiles[0]) || img1;
+      if (imageFiles[1]) img2 = getBase64FromFile(imageFiles[1]) || img2;
+      if (imageFiles[2]) img3 = getBase64FromFile(imageFiles[2]) || img3;
     } else if (req.file) {
-      img1 = `/uploads/${req.file.filename}`;
+      img1 = getBase64FromFile(req.file) || img1;
     }
 
     const formatted = await productService.updateExistingProduct(req.params.id, req.body, { img1, img2, img3 });
