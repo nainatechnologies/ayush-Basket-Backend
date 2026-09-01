@@ -12,7 +12,7 @@ const createNewCoupon = async (data) => {
     code: data.code.toUpperCase(),
     discountType: data.discountType,
     discountValue: data.discountValue,
-    minPurchase: data.minPurchase || 0,
+    minOrderAmount: data.minOrderAmount || 0,
     maxDiscount: data.maxDiscount || null,
     validFrom: data.validFrom || new Date(),
     validUntil: data.validUntil || null,
@@ -59,8 +59,8 @@ const validateCouponForCart = async (code, cartTotal) => {
     throw error;
   }
 
-  if (cartTotal < coupon.minPurchase) {
-    const error = new Error(`Minimum purchase of ₹${coupon.minPurchase} required`);
+  if (cartTotal < coupon.minOrderAmount) {
+    const error = new Error(`Minimum purchase of ₹${coupon.minOrderAmount} required`);
     error.statusCode = 400;
     throw error;
   }
