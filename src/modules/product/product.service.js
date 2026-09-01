@@ -149,6 +149,7 @@ const createNewProduct = async (data, images) => {
       productTag: data.product_tag || null,
       metaTitle: data.meta_title || null,
       metaDescription: data.meta_description || null,
+      returnPolicy: data.returnPolicy || 'Easy Return',
     });
     return product;
   } catch (err) {
@@ -213,6 +214,7 @@ const updateExistingProduct = async (id, data, images) => {
     prod.productTag = actualProductTag !== undefined ? actualProductTag : prod.productTag;
     prod.metaTitle = data.metaTitle !== undefined ? data.metaTitle : (data.meta_title !== undefined ? data.meta_title : prod.metaTitle);
     prod.metaDescription = data.metaDescription !== undefined ? data.metaDescription : (data.meta_description !== undefined ? data.meta_description : prod.metaDescription);
+    prod.returnPolicy = data.returnPolicy !== undefined ? data.returnPolicy : prod.returnPolicy;
 
     await prod.save();
 

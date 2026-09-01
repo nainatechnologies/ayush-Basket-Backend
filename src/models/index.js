@@ -14,6 +14,7 @@ const Coupon = require('../modules/coupon/coupon.model');
 const Review = require('../modules/review/review.model');
 const WishlistItem = require('../modules/wishlist/wishlistItem.model');
 const OrderStatusHistory = require('../modules/order/orderStatusHistory.model');
+const DailyRevenue = require('../modules/revenue/dailyRevenue.model');
 
 // Relationships
 
@@ -112,5 +113,6 @@ module.exports = {
   Coupon,
   Review,
   WishlistItem,
-  OrderStatusHistory
+  OrderStatusHistory,
+  DailyRevenue
 };

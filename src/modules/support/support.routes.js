@@ -5,9 +5,13 @@ const { protect, admin } = require('../../middleware/authMiddleware');
 
 const validate = require('../../middleware/validate.middleware');
 const { createTicketSchema, resolveTicketSchema } = require('./support.validation');
+const upload = require('../../middleware/uploadMiddleware');
 
 // Customer routes
-router.post('/', protect, validate(createTicketSchema), createTicket);
+router.post('/', protect, upload.none(), (req, res, next) => {
+  require('fs').writeFileSync('support_debug.json', JSON.stringify(req.body, null, 2));
+  next();
+}, validate(createTicketSchema), createTicket);
 router.get('/my', protect, getMyTickets);
 
 // Admin routes

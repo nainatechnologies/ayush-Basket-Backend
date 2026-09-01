@@ -96,6 +96,11 @@ const Product = sequelize.define('Product', {
   metaDescription: {
     type: DataTypes.TEXT,
     field: 'meta_description'
+  },
+  returnPolicy: {
+    type: DataTypes.STRING,
+    defaultValue: 'Easy Return',
+    field: 'return_policy'
   }
 }, {
   tableName: 'products'

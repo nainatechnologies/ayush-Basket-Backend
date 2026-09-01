@@ -86,7 +86,31 @@ const validateCouponForCart = async (code, cartTotal) => {
   };
 };
 
+
+const updateCouponById = async (id, data) => {
+  const coupon = await Coupon.findByPk(id);
+  if (!coupon) {
+    const err = new Error('Coupon not found'); err.statusCode = 404; throw err;
+  }
+  return await coupon.update(data);
+};
+
+const deleteCouponById = async (id) => {
+  const coupon = await Coupon.findByPk(id);
+  if (!coupon) {
+    const err = new Error('Coupon not found'); err.statusCode = 404; throw err;
+  }
+  await coupon.destroy();
+};
+
+const getActiveCoupons = async () => {
+  return await Coupon.findAll({ where: { is_active: true } });
+};
+
 module.exports = {
+  updateCouponById,
+  deleteCouponById,
+  getActiveCoupons,
   createNewCoupon,
   getAllCoupons,
   validateCouponForCart

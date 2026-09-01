@@ -14,6 +14,15 @@ const registerUser = async (data) => {
     throw error;
   }
 
+  if (data.phone) {
+    const existingPhone = await User.findOne({ where: { phone: data.phone.trim() } });
+    if (existingPhone) {
+      const error = new Error('An account with this phone number already exists.');
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(data.password, salt);
 
@@ -166,6 +175,7 @@ const resetPasswordWithToken = async (resetToken, newPassword) => {
   user.password = hashedPassword;
   await user.save();
 };
+
 
 module.exports = {
   registerUser,

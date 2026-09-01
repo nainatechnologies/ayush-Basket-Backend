@@ -41,4 +41,35 @@ const validateCoupon = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { createCoupon, getAdminCoupons, validateCoupon };
+
+const updateCoupon = asyncHandler(async (req, res) => {
+  try {
+    const coupon = await couponService.updateCouponById(req.params.id, req.body);
+    return sendSuccess(res, 200, 'Coupon updated', coupon);
+  } catch (error) {
+    if (error.statusCode) return sendError(res, error.statusCode, error.message);
+    return sendError(res, 500, 'Server error updating coupon');
+  }
+});
+
+const deleteCoupon = asyncHandler(async (req, res) => {
+  try {
+    await couponService.deleteCouponById(req.params.id);
+    return sendSuccess(res, 200, 'Coupon deleted');
+  } catch (error) {
+    if (error.statusCode) return sendError(res, error.statusCode, error.message);
+    return sendError(res, 500, 'Server error deleting coupon');
+  }
+});
+
+const getActiveCoupons = asyncHandler(async (req, res) => {
+  try {
+    const coupons = await couponService.getActiveCoupons();
+    return sendSuccess(res, 200, 'Active coupons fetched', coupons);
+  } catch (error) {
+    return sendError(res, 500, 'Server error fetching active coupons');
+  }
+});
+
+module.exports = { createCoupon, getAdminCoupons, validateCoupon, updateCoupon, deleteCoupon, getActiveCoupons };
+

@@ -20,4 +20,28 @@ router.put('/profile', protect, admin, updateAdminProfile);
 // Admin – List all customers
 router.get('/customers', protect, admin, getAllCustomers);
 
+// --------------------------------------------------------
+// ALIASES FOR FRONTEND EXPECTATIONS (/api/admin/...)
+// --------------------------------------------------------
+const validate = require('../../middleware/validate.middleware');
+
+// Support
+const { getAllTickets, resolveTicket } = require('../support/support.controller');
+const { resolveTicketSchema } = require('../support/support.validation');
+router.get('/support', protect, admin, getAllTickets);
+router.put('/support/:id/resolve', protect, admin, validate(resolveTicketSchema), resolveTicket);
+
+// Prescriptions
+const { getAllPrescriptions, getPrescriptionById, approvePrescription, rejectPrescription } = require('../prescription/prescription.controller');
+const { approvePrescriptionSchema } = require('../prescription/prescription.validation');
+router.get('/prescriptions', protect, admin, getAllPrescriptions);
+router.get('/prescriptions/:id', protect, admin, getPrescriptionById);
+router.put('/prescriptions/:id/approve', protect, admin, validate(approvePrescriptionSchema), approvePrescription);
+router.put('/prescriptions/:id/reject', protect, admin, rejectPrescription);
+
+// Revenue
+const { getRevenue } = require('../revenue/revenue.controller');
+const { getRevenueSchema } = require('../revenue/revenue.validation');
+router.get('/revenue', protect, admin, validate(getRevenueSchema), getRevenue);
+
 module.exports = router;

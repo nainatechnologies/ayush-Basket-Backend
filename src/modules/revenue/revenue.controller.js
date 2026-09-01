@@ -1,7 +1,7 @@
 const revenueService = require('./revenue.service');
 
-// @desc    Get revenue stats with date filters
-// @route   GET /api/admin/revenue
+// @desc    Get revenue analytics
+// @route   GET /api/revenue/analytics
 // @access  Private/Admin
 const getRevenue = async (req, res) => {
   try {
@@ -9,13 +9,10 @@ const getRevenue = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      purchaseMoney: data.totalCost,
-      sellingMoney: data.totalRevenue,
-      profitMoney: data.totalProfit,
-      daily: data.daily
+      data: data
     });
   } catch (error) {
-    console.error('Error fetching revenue:', error);
+    console.error('Error fetching revenue analytics:', error);
     res.status(500).json({ success: false, message: 'Server error fetching revenue.' });
   }
 };

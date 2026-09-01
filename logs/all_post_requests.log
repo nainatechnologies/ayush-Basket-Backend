@@ -1,0 +1,63 @@
+{"time":"2026-08-31T09:40:45.252Z","url":"/api/support","body":{"subject":"Modal Inquiry from lucky2 (912342343456)","message":"alsdkljfgnm,"}}
+{"time":"2026-08-31T09:56:42.379Z","url":"/api/coupons","body":{"code":"AGE30H","discountType":"fixed","discountValue":400,"minPurchase":4000,"usageLimit":1,"validFrom":"2026-08-31","validUntil":"2026-09-30","isActive":true}}
+{"time":"2026-08-31T11:03:26.616Z","url":"/api/products"}
+{"time":"2026-08-31T11:10:47.901Z","url":"/api/cart/items","body":{"product_id":2,"quantity":1}}
+{"time":"2026-08-31T11:10:47.930Z","url":"/api/cart/items","body":{"product_id":2,"quantity":1}}
+{"time":"2026-08-31T11:10:56.267Z","url":"/api/addresses","body":{"full_name":"Alekya Sunkari","phone":"07569363718","street":"sss, kothapet, Hyderabad, 500035","city":"Hyderabad","state":"Telangana","pincode":"500035"}}
+{"time":"2026-08-31T11:11:00.791Z","url":"/api/orders","body":{"orderId":"HC-133424","ordered_date":"2026-08-31T11:11:00.785Z","orderItems":[{"product_id":2,"quantity":1,"product_name":"SDFH","small_description":"SDSFGH","product_description":"SDSFGH","category":"Unani","price":599.87,"package_size":"Standard","potency":null,"composition":null,"dosage":"Follow the directions of your registered homeopathic physician.","status":"Pending"}],"address_id":"2","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":599.87}}
+{"time":"2026-08-31T11:13:22.694Z","url":"/api/support","body":{"subject":"Modal Inquiry from Alekya Sunkari (9989897564)","message":"asldj"}}
+{"time":"2026-08-31T11:17:20.675Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya123","phone":"07569363718"}}
+{"time":"2026-08-31T11:17:38.789Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari855@gmail.com","password":"Alekya123","phone":"07569363718"}}
+{"time":"2026-08-31T11:21:11.662Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"adminpassword123"}}
+{"time":"2026-08-31T11:21:43.973Z","url":"/api/prescriptions"}
+{"time":"2026-09-01T04:15:55.426Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"adminpassword123"}}
+{"time":"2026-09-01T04:24:44.541Z","url":"/api/cart/items","body":{"product_id":2,"quantity":1}}
+{"time":"2026-09-01T04:24:44.616Z","url":"/api/cart/items","body":{"product_id":2,"quantity":1}}
+{"time":"2026-09-01T04:24:51.156Z","url":"/api/coupons/validate","body":{"code":"AGE30H","cartTotal":599.87}}
+{"time":"2026-09-01T04:25:06.346Z","url":"/api/orders","body":{"orderId":"HC-898041","ordered_date":"2026-09-01T04:25:06.330Z","orderItems":[{"product_id":2,"quantity":1,"product_name":"SDFH","small_description":"Healthcare product","product_description":"SDSFGH","category":"Category","price":599.87,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"1","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":599.87}}
+{"time":"2026-09-01T04:38:31.335Z","url":"/api/orders","body":{"orderId":"HC-448368","ordered_date":"2026-09-01T04:38:31.326Z","orderItems":[{"product_id":null,"quantity":2,"product_name":"Omron Smart Digital Blood Pressure Monitor","small_description":"Clinically validated accurate upper-arm blood pressure monitor with Intellisense technology.","product_description":"Omron Digital BP Monitor provides one-touch precise blood pressure and pulse readings with irregular heartbeat detection and hypertension indicator display.","category":"Health Devices","price":1899,"package_size":"Medium-Large Cuff (22-42cm)","potency":"Standard Device","composition":"Digital Monitor Device, Arm Cuff, 4 AA Batteries, Storage Pouch","dosage":"Place cuff 2cm above elbow crease, rest arm on table at heart level, press Start.","status":"Pending"}],"address_id":"1","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":3798}}
+{"time":"2026-09-01T04:57:07.382Z","url":"/api/reviews","body":{"productId":"2","rating":4,"comment":"good product"}}
+{"time":"2026-09-01T04:57:10.917Z","url":"/api/reviews","body":{"productId":"2","rating":4,"comment":"good product"}}
+{"time":"2026-09-01T04:59:49.250Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"adminpassword123"}}
+{"time":"2026-09-01T05:02:06.181Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"adminpassword123"}}
+{"time":"2026-09-01T05:09:03.694Z","url":"/api/reviews","body":{"productId":"2","rating":4,"comment":"good product"}}
+{"time":"2026-09-01T05:09:32.490Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"password@123"}}
+{"time":"2026-09-01T05:11:08.639Z","url":"/api/reviews","body":{"productId":"2","rating":4,"comment":"good product"}}
+{"time":"2026-09-01T05:18:22.144Z","url":"/api/auth/login","body":{"email":"alekyasunkari262003@gmail.com","password":"Alekya Sunkari"}}
+{"time":"2026-09-01T05:18:39.059Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:19:31.702Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"149944"}}
+{"time":"2026-09-01T05:19:31.716Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya@#123","phone":"7569363718"}}
+{"time":"2026-09-01T05:19:34.998Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"149944"}}
+{"time":"2026-09-01T05:24:18.574Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"149944"}}
+{"time":"2026-09-01T05:24:27.208Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:25:28.128Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"149944"}}
+{"time":"2026-09-01T05:26:59.989Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:28:16.157Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"123123"}}
+{"time":"2026-09-01T05:29:14.590Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:29:32.464Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:29:32.475Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya@123","phone":"7569363718"}}
+{"time":"2026-09-01T05:29:36.632Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:29:38.260Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:29:40.078Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:29:41.776Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:29:49.503Z","url":"/api/auth/login","body":{"email":"alekyasunkari262003@gmail.com","password":"Alekya@123"}}
+{"time":"2026-09-01T05:29:54.950Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:31:29.746Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"431883"}}
+{"time":"2026-09-01T05:31:44.676Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:32:21.819Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:33:20.842Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"Alekya@123"}}
+{"time":"2026-09-01T05:33:28.344Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya@123"}}
+{"time":"2026-09-01T05:33:54.105Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:34:01.980Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"123456"}}
+{"time":"2026-09-01T05:34:02.942Z","url":"/api/auth/verify-registration-otp","body":{"phone":"7569363718","otp":"123456"}}
+{"time":"2026-09-01T05:35:50.667Z","url":"/api/auth/forgot-password","body":{"phone":"123456"}}
+{"time":"2026-09-01T05:37:13.277Z","url":"/api/auth/verify-otp","body":{"phone":"123456","otp":"123456"}}
+{"time":"2026-09-01T05:37:30.478Z","url":"/api/auth/forgot-password","body":{"phone":"123456"}}
+{"time":"2026-09-01T05:37:38.857Z","url":"/api/auth/verify-otp","body":{"phone":"123456","otp":"123456"}}
+{"time":"2026-09-01T05:41:59.778Z","url":"/api/admin/login","body":{"email":"admin@ayushbasket.com","password":"password@123"}}
+{"time":"2026-09-01T05:42:08.723Z","url":"/api/auth/login","body":{"email":"alekyasunkari262003@gmail.com","password":"Alekya@#123"}}
+{"time":"2026-09-01T05:42:17.364Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-01T05:42:22.095Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"123456"}}
+{"time":"2026-09-01T05:42:43.048Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari855@gmail.com","password":"Alekya@123","phone":"07569363718"}}
+{"time":"2026-09-01T05:42:51.911Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari02@gmail.com","password":"Alekya@123","phone":"07569363718"}}
+{"time":"2026-09-01T05:42:57.559Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari02@gmail.com","password":"Alekya@123","phone":"07569363717"}}

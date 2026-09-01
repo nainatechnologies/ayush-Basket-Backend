@@ -1,7 +1,9 @@
+const revenueService = require('../revenue/revenue.service');
 const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory } = require('../../models');
+const couponService = require('../coupon/coupon.service');
 
 const createOrder = async (userId, data) => {
-  const { orderItems, address_id, paymentMethod } = data;
+  const { orderItems, address_id, paymentMethod, couponCode } = data;
 
   const address = await Address.findOne({ where: { id: address_id, userId } });
   if (!address) {
@@ -42,10 +44,24 @@ const createOrder = async (userId, data) => {
       await product.save({ transaction: t });
     }
 
+    let finalAmount = totalAmount;
+    let appliedCouponId = null;
+
+    if (couponCode) {
+      try {
+        const couponValidation = await couponService.validateCouponForCart(couponCode, totalAmount);
+        finalAmount -= couponValidation.discountAmount;
+        appliedCouponId = couponValidation.coupon.id;
+      } catch (err) {
+        throw new Error('Invalid coupon: ' + err.message);
+      }
+    }
+
     const order = await Order.create({
       userId,
       addressId: address_id,
-      totalAmount,
+      couponId: appliedCouponId,
+      totalAmount: finalAmount,
       paymentMethod: paymentMethod || 'cod',
       status: 'pending',
       paymentStatus: 'pending'
@@ -136,6 +152,7 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
   
   if (status.toLowerCase() === 'completed') {
     order.paymentStatus = 'paid';
+    await revenueService.logOrderRevenue(orderId).catch(err => console.error('Error logging revenue:', err));
   }
 
   await order.save();

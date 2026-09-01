@@ -3,20 +3,8 @@ const { Review, Order, OrderItem } = require('../../models');
 const addOrUpdateReview = async (userId, data) => {
   const { productId, rating, comment } = data;
 
-  const hasPurchased = await Order.findOne({
-    where: { userId, status: 'completed' },
-    include: [{
-      model: OrderItem,
-      as: 'items',
-      where: { productId }
-    }]
-  });
-
-  if (!hasPurchased) {
-    const error = new Error('You can only review products you have purchased');
-    error.statusCode = 403;
-    throw error;
-  }
+  // The purchase check has been removed by user request, 
+  // anyone logged in can review the product.
 
   let review = await Review.findOne({ where: { userId, productId } });
 

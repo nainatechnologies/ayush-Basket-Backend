@@ -1,10 +1,15 @@
 const { z } = require('zod');
 
+const numericString = z.union([
+  z.number(),
+  z.string().transform(val => Number(val)).refine(val => !isNaN(val))
+]);
+
 const addOrderSchema = z.object({
   body: z.object({
     orderItems: z.array(z.object({
       product_id: z.union([z.number(), z.string()]).refine(val => !!val, { message: 'Product ID is required' }),
-      quantity: z.number().int().positive('Quantity must be a positive integer')
+      quantity: numericString.refine(val => val > 0, 'Quantity must be a positive integer')
     })).min(1, 'No order items provided'),
     address_id: z.union([z.number(), z.string()]).refine(val => !!val, { message: 'Delivery address is required' }),
     paymentMethod: z.string().optional()

@@ -1,7 +1,15 @@
-const { Order, OrderItem, User, Address, Product, Category, Prescription } = require('../../models');
+const { Order, OrderItem, User, Address, Product, Category, Prescription, Coupon } = require('../../models');
 const { Op } = require('sequelize');
 
 const getStats = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStart = yesterday;
+  const yesterdayEnd = new Date(today.getTime() - 1);
+
   const completedOrders = await Order.count({ where: { status: 'completed' } });
   const pendingOrders = await Order.count({ 
     where: { 
@@ -13,15 +21,58 @@ const getStats = async () => {
   const customerCount = await User.count({ where: { role: 'customer' } });
   const productCount = await Product.count({ where: { status: { [Op.ne]: 'hidden' } } });
   const prescriptionCount = await Prescription.count({ where: { status: 'pending' } });
+  const couponCount = await Coupon.count({ where: { isActive: true } });
+
+  // Yesterday's Data
+  const yesterdayCompletedOrders = await Order.count({ 
+    where: { status: 'completed', created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
+  const yesterdayPendingOrders = await Order.count({ 
+    where: { 
+      status: { [Op.in]: ['pending', 'processing', 'confirmed', 'accepted'] },
+      created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] }
+    } 
+  });
+  const yesterdayTotalOrders = await Order.count({
+    where: { created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } }
+  });
+  const yesterdaySales = await Order.sum('totalAmount', { 
+    where: { status: 'completed', created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
+  const yesterdayCustomerCount = await User.count({ 
+    where: { role: 'customer', created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
+  const yesterdayProductCount = await Product.count({ 
+    where: { status: { [Op.ne]: 'hidden' }, created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
+  const yesterdayPrescriptionCount = await Prescription.count({ 
+    where: { status: 'pending', created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
+  const yesterdayCouponCount = await Coupon.count({ 
+    where: { isActive: true, created_at: { [Op.between]: [yesterdayStart, yesterdayEnd] } } 
+  });
 
   return {
     totalSales: totalSales || 0,
+    revenue: totalSales || 0, // Added alias for frontend compatibility
+    totalRevenue: totalSales || 0, // Added alias for frontend compatibility
     totalOrders: totalOrders || 0,
     completedOrders: completedOrders || 0,
     pendingOrders: pendingOrders || 0,
     customerCount: customerCount || 0,
     productCount: productCount || 0,
-    prescriptionCount: prescriptionCount || 0
+    prescriptionCount: prescriptionCount || 0,
+    couponCount: couponCount || 0,
+    
+    // Yesterday's data
+    yesterdaySales: yesterdaySales || 0,
+    yesterdayTotalOrders: yesterdayTotalOrders || 0,
+    yesterdayCompletedOrders: yesterdayCompletedOrders || 0,
+    yesterdayPendingOrders: yesterdayPendingOrders || 0,
+    yesterdayCustomerCount: yesterdayCustomerCount || 0,
+    yesterdayProductCount: yesterdayProductCount || 0,
+    yesterdayPrescriptionCount: yesterdayPrescriptionCount || 0,
+    yesterdayCouponCount: yesterdayCouponCount || 0
   };
 };
 

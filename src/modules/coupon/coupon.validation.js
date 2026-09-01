@@ -15,6 +15,15 @@ const createCouponSchema = z.object({
     validFrom: z.string().optional().nullable(),
     validUntil: z.string().optional().nullable(),
     usageLimit: numericString.optional().nullable(),
+    
+    tag: z.string().optional().nullable(),
+    tagBg: z.string().optional().nullable(),
+    title: z.string().optional().nullable(),
+    titleAccent: z.string().optional().nullable(),
+    subtitle: z.string().optional().nullable(),
+    ctaLink: z.string().optional().nullable(),
+    image: z.string().optional().nullable(),
+    gradientBg: z.string().optional().nullable(),
     isActive: z.boolean().optional()
   })
 });

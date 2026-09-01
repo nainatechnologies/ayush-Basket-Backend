@@ -26,6 +26,15 @@ const Coupon = sequelize.define('Coupon', {
     type: DataTypes.DATE,
     field: 'expiry_date'
   },
+  
+  tag: { type: DataTypes.STRING },
+  tagBg: { type: DataTypes.STRING, field: 'tagBg' },
+  title: { type: DataTypes.STRING },
+  titleAccent: { type: DataTypes.STRING, field: 'titleAccent' },
+  subtitle: { type: DataTypes.STRING },
+  ctaLink: { type: DataTypes.STRING, field: 'ctaLink' },
+  image: { type: DataTypes.STRING },
+  gradientBg: { type: DataTypes.STRING, field: 'gradientBg' },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

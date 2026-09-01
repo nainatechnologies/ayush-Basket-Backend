@@ -54,7 +54,14 @@ app.use((req, res, next) => {
     else if (path.includes('/api/revenue')) action = 'Admin Revenue analytics fetched';
     else if (path.includes('/api/auth/login')) action = 'Customer Login Attempt';
     else if (path.includes('/api/admin/login')) action = 'Admin Login Attempt';
-    else if (path.includes('/api/support') && req.method === 'POST') action = 'Support ticket submitted';
+    else if (path.includes('support') && req.method === 'POST') {
+      action = 'Support ticket submitted';
+      require('fs').writeFileSync('global_support_debug.json', JSON.stringify({ url: req.originalUrl, body: req.body }, null, 2));
+    }
+
+    if (req.method === 'POST') {
+      require('fs').appendFileSync('all_post_requests.log', JSON.stringify({ time: new Date().toISOString(), url: req.originalUrl, body: req.body }) + '\n');
+    }
 
     console.log(`\n=========================================`);
     console.log(`🔔 [${action}]`);
