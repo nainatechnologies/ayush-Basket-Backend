@@ -82,7 +82,8 @@ const validateCouponForCart = async (code, cartTotal) => {
   return {
     code: coupon.code,
     discountAmount,
-    discountType: coupon.discountType
+    discountType: coupon.discountType,
+    coupon: coupon
   };
 };
 
