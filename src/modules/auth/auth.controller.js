@@ -7,6 +7,14 @@ const register = async (req, res) => {
   try {
     const { user, token } = await authService.registerUser(req.body);
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    };
+    res.cookie('token', token, cookieOptions);
+
     res.status(201).json({
       success: true,
       message: 'Account created successfully.',
@@ -29,6 +37,14 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const { user, token } = await authService.loginUser(email, password);
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    };
+    res.cookie('token', token, cookieOptions);
 
     res.status(200).json({
       success: true,
