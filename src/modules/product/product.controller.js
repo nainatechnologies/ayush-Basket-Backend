@@ -76,7 +76,7 @@ const createProduct = async (req, res) => {
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
     console.error('Error creating product:', error);
-    res.status(500).json({ success: false, message: 'Server error creating product.' });
+    res.status(500).json({ success: false, message: 'Server error creating product: ' + error.message, stack: process.env.NODE_ENV === 'development' ? error.stack : undefined });
   }
 };
 
