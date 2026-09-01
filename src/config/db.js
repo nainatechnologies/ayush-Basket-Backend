@@ -1,15 +1,15 @@
 const { Sequelize } = require('sequelize');
 
-if (!process.env.DB_HOST) throw new Error('DB_HOST is missing');
-if (!process.env.DB_PORT) throw new Error('DB_PORT is missing');
-if (!process.env.DB_USER) throw new Error('DB_USER is missing');
-if (!process.env.DB_NAME) throw new Error('DB_NAME is missing');
-if (!process.env.DB_PASSWORD && process.env.DB_PASSWORD !== '') {
-  // It's possible to have an empty password in local dev, but the variable should be defined.
-  // Actually let's just make sure it's not undefined.
-  if (typeof process.env.DB_PASSWORD === 'undefined') {
-    throw new Error('DB_PASSWORD is missing');
-  }
+const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME', 'DB_PASSWORD'];
+const missing = requiredEnvVars.filter(v => process.env[v] === undefined);
+
+if (missing.length > 0) {
+  console.error('\n❌  STARTUP ERROR: Missing required environment variables!');
+  console.error('   Missing:', missing.join(', '));
+  console.error('\n🔧  Fix: Create a .env file in the project root.');
+  console.error('   You can copy .env.example and fill in the real values:');
+  console.error('   cp .env.example .env\n');
+  process.exit(1);
 }
 
 const sequelize = new Sequelize(

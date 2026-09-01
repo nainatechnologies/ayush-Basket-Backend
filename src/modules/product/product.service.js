@@ -38,8 +38,8 @@ const getCustomerProducts = async (filters) => {
     const prod = p.toJSON();
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
-    prod.image = prod.imageUrl ? ((prod.imageUrl.startsWith('http') || prod.imageUrl.startsWith('data:')) ? prod.imageUrl : `http://localhost:5000${prod.imageUrl}`) : null;
-    prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean).map(img => (img.startsWith('http') || img.startsWith('data:')) ? img : `http://localhost:5000${img}`);
+    prod.image = prod.imageUrl || null;
+    prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     return prod;
   });
 };
@@ -79,8 +79,8 @@ const getAdminProductsList = async (filters) => {
     const prod = p.toJSON();
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
-    prod.image = prod.imageUrl ? ((prod.imageUrl.startsWith('http') || prod.imageUrl.startsWith('data:')) ? prod.imageUrl : `http://localhost:5000${prod.imageUrl}`) : null;
-    prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean).map(img => (img.startsWith('http') || img.startsWith('data:')) ? img : `http://localhost:5000${img}`);
+    prod.image = prod.imageUrl || null;
+    prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     return prod;
   });
 };
@@ -98,8 +98,8 @@ const getProductDetails = async (id) => {
 
   const prod = product.toJSON();
   prod.category_name = prod.category ? prod.category.name : null;
-  prod.image = prod.imageUrl ? ((prod.imageUrl.startsWith('http') || prod.imageUrl.startsWith('data:')) ? prod.imageUrl : `http://localhost:5000${prod.imageUrl}`) : null;
-  prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean).map(img => (img.startsWith('http') || img.startsWith('data:')) ? img : `http://localhost:5000${img}`);
+  prod.image = prod.imageUrl || null;
+  prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
 
   return prod;
 };
