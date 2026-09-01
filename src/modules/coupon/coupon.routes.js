@@ -6,7 +6,7 @@ const { protect, admin } = require('../../middleware/authMiddleware');
 const validate = require('../../middleware/validate.middleware');
 const { createCouponSchema, validateCouponSchema } = require('./coupon.validation');
 
-router.post('/validate', protect, validate(validateCouponSchema), validateCoupon);
+router.post('/validate', validate(validateCouponSchema), validateCoupon);
 router.get('/active', getActiveCoupons);
 router.put('/:id', protect, admin, updateCoupon);
 router.delete('/:id', protect, admin, deleteCoupon);

@@ -3,3 +3,10 @@
 {"time":"2026-09-01T07:03:39.026Z","url":"/api/cart/items","body":{"product_id":3,"quantity":1}}
 {"time":"2026-09-01T07:03:48.907Z","url":"/api/addresses","body":{"full_name":"Alekya Sunkari","phone":"07569363718","street":"df, kothapet, Hyderabad, 500035","city":"Hyderabad","state":"Telangana","pincode":"500035"}}
 {"time":"2026-09-01T07:03:53.877Z","url":"/api/orders","body":{"orderId":"HC-779431","ordered_date":"2026-09-01T07:03:53.872Z","orderItems":[{"product_id":3,"quantity":1,"product_name":"arnicaaa","small_description":"Healthcare product","product_description":"s,df,mnhgmf,","category":"Digestive Care","price":3000,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"6","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":3000}}
+{"time":"2026-09-01T09:40:49.443Z","url":"/api/products"}
+{"time":"2026-09-01T09:52:43.762Z","url":"/api/cart/items","body":{"product_id":10,"quantity":1}}
+{"time":"2026-09-01T09:52:43.781Z","url":"/api/cart/items","body":{"product_id":10,"quantity":1}}
+{"time":"2026-09-01T09:52:57.421Z","url":"/api/coupons/validate","body":{"code":"HTTPS://GITHUB.COM/NAINATECHNOLOGIES/AYUSH-BASKET-FRONTEND.GIT","cartTotal":1200}}
+{"time":"2026-09-01T09:53:21.307Z","url":"/api/coupons/validate","body":{"code":"AGE30H","cartTotal":1200}}
+{"time":"2026-09-01T09:53:28.742Z","url":"/api/orders","body":{"orderId":"HC-657935","ordered_date":"2026-09-01T09:53:28.717Z","orderItems":[{"product_id":10,"quantity":1,"product_name":"dlfkjh","small_description":"Healthcare product","product_description":"/ad;lkflk","category":"Unani","price":1200,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"6","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":1200}}
+{"time":"2026-09-01T10:01:18.959Z","url":"/api/coupons/validate","body":{"code":"WELCOME100","cartTotal":500}}
