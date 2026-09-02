@@ -32,24 +32,24 @@ const getAdminProducts = async (req, res) => {
 // @access  Public
 const getProductById = async (req, res) => {
   try {
-    const prod = await productService.getProductDetails(req.params.id);
-    res.status(200).json({ success: true, data: prod });
+    const product = await productService.getProductDetails(req.params.id);
+    res.status(200).json({ success: true, data: product });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
-    console.error('Error fetching product:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching product.' });
+    
+    try {
+      // Fallback
+      const fallbackProduct = await productService.getProductById(req.params.id);
+      if (!fallbackProduct) return res.status(404).json({ success: false, message: 'Product not found.' });
+      return res.status(200).json({ success: true, data: fallbackProduct });
+    } catch (fallbackError) {
+      console.error('Error fetching product:', fallbackError);
+      return res.status(500).json({ success: false, message: 'Server error fetching product.' });
+    }
   }
 };
 
-const fs = require('fs');
-const path = require('path');
-
-const getImageUrlFromFile = (file) => {
-  if (!file || !file.filename) return null;
-  return `/uploads/${file.filename}`;
-};
-
-// @desc    Create a product (Admin only)
+// @desc    Create a new product (Admin only)
 // @route   POST /api/products
 // @access  Private/Admin
 const createProduct = async (req, res) => {
@@ -60,18 +60,9 @@ const createProduct = async (req, res) => {
 
     if (req.body.imageUrls) {
       const urls = req.body.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
-      if (urls[0]) img1 = urls[0];
-      if (urls[1]) img2 = urls[1];
-      if (urls[2]) img3 = urls[2];
-    }
-
-    if (req.files && req.files.length > 0) {
-      const imageFiles = req.files.filter(f => f.fieldname === 'image');
-      if (imageFiles[0]) img1 = getImageUrlFromFile(imageFiles[0]) || img1;
-      if (imageFiles[1]) img2 = getImageUrlFromFile(imageFiles[1]) || img2;
-      if (imageFiles[2]) img3 = getImageUrlFromFile(imageFiles[2]) || img3;
-    } else if (req.file) {
-      img1 = getImageUrlFromFile(req.file) || img1;
+      if (urls[0]) img1 = processBase64Image(urls[0]);
+      if (urls[1]) img2 = processBase64Image(urls[1]);
+      if (urls[2]) img3 = processBase64Image(urls[2]);
     }
 
     const product = await productService.createNewProduct(req.body, { img1, img2, img3 });
@@ -96,15 +87,6 @@ const updateProduct = async (req, res) => {
     let img1 = processBase64Image(req.body.image_url || req.body.image || req.body.imageUrl) || '';
     let img2 = processBase64Image(req.body.image_url2 || req.body.imageUrl2) || undefined;
     let img3 = processBase64Image(req.body.image_url3 || req.body.imageUrl3) || undefined;
-
-    if (req.files && req.files.length > 0) {
-      const imageFiles = req.files.filter(f => f.fieldname === 'image');
-      if (imageFiles[0]) img1 = getImageUrlFromFile(imageFiles[0]) || img1;
-      if (imageFiles[1]) img2 = getImageUrlFromFile(imageFiles[1]) || img2;
-      if (imageFiles[2]) img3 = getImageUrlFromFile(imageFiles[2]) || img3;
-    } else if (req.file) {
-      img1 = getImageUrlFromFile(req.file) || img1;
-    }
 
     const formatted = await productService.updateExistingProduct(req.params.id, req.body, { img1, img2, img3 });
 

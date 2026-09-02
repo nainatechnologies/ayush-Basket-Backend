@@ -59,3 +59,15 @@
 {"time":"2026-09-02T09:06:23.865Z","url":"/api/cart/items","body":{"product_id":13,"quantity":1}}
 {"time":"2026-09-02T09:06:31.824Z","url":"/api/coupons/validate","body":{"code":"YEAREND2026","cartTotal":700}}
 {"time":"2026-09-02T09:06:38.222Z","url":"/api/orders","body":{"orderId":"HC-408448","ordered_date":"2026-09-02T09:06:38.217Z","orderItems":[{"product_id":13,"quantity":1,"product_name":"aass","small_description":"Healthcare product","product_description":"","category":"Joint Pain","price":700,"package_size":"Standard","potency":null,"composition":null,"dosage":"Follow the directions of your registered homeopathic physician.","status":"Pending"}],"address_id":"2","paymentMethod":"card","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":560,"couponCode":"YEAREND2026"}}
+{"time":"2026-09-02T09:27:16.373Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:28:57.004Z","url":"/api/auth/register","body":{}}
+{"time":"2026-09-02T09:36:36.780Z","url":"/api/auth/register","body":{"name":"Test","email":"test2@example.com","phone":"9999999999","password":"Password@123","otp":"123456"}}
+{"time":"2026-09-02T09:43:11.948Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:44:25.287Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:45:12.549Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:51:55.103Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:51:57.455Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:52:14.357Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T09:56:55.220Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
+{"time":"2026-09-02T10:04:28.491Z","url":"/api/auth/send-registration-otp","body":{"phone":"9492037596"}}
+{"time":"2026-09-02T10:04:52.206Z","url":"/api/auth/register","body":{"name":"manish","email":"manish@gmail.com","password":"manish@123","phone":"9492037596","otp":"654914"}}
