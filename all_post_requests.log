@@ -71,3 +71,17 @@
 {"time":"2026-09-02T09:56:55.220Z","url":"/api/auth/send-registration-otp","body":{"phone":"8519957968"}}
 {"time":"2026-09-02T10:04:28.491Z","url":"/api/auth/send-registration-otp","body":{"phone":"9492037596"}}
 {"time":"2026-09-02T10:04:52.206Z","url":"/api/auth/register","body":{"name":"manish","email":"manish@gmail.com","password":"manish@123","phone":"9492037596","otp":"654914"}}
+{"time":"2026-09-02T10:13:54.080Z","url":"/api/products"}
+{"time":"2026-09-02T10:22:43.916Z","url":"/api/products"}
+{"time":"2026-09-02T10:22:46.597Z","url":"/api/products"}
+{"time":"2026-09-02T10:33:20.198Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T10:33:20.228Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T10:33:56.439Z","url":"/api/addresses","body":{"full_name":"gachibowili","phone":"9492037596","street":"kothapet, Hyderabad, 500035, kothapet, Hyderabad, 500035","city":"Hyderabad","state":"Telangana","pincode":"500035"}}
+{"time":"2026-09-02T10:34:07.184Z","url":"/api/orders","body":{"orderId":"HC-416485","ordered_date":"2026-09-02T10:34:07.171Z","orderItems":[{"product_id":17,"quantity":1,"product_name":"arnicaa","small_description":"Healthcare product","product_description":"","category":"Homeopathy","price":1200,"package_size":"Standard","potency":null,"composition":null,"dosage":"Follow the directions of your registered homeopathic physician.","status":"Pending"}],"address_id":"8","paymentMethod":"cod","customer_name":"gachibowili","phone_number":"9492037596","total_amount":1200}}
+{"time":"2026-09-02T10:40:45.637Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T10:40:45.656Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T10:40:51.494Z","url":"/api/orders","body":{"orderId":"HC-841354","ordered_date":"2026-09-02T10:40:51.468Z","orderItems":[{"product_id":17,"quantity":1,"product_name":"arnicaa","small_description":"Healthcare product","product_description":"","category":"Homeopathy","price":1200,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"8","paymentMethod":"cod","customer_name":"gachibowili","phone_number":"9492037596","total_amount":1200}}
+{"time":"2026-09-02T11:08:12.772Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T11:08:12.795Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-02T11:08:21.756Z","url":"/api/orders","body":{"orderId":"HC-508164","ordered_date":"2026-09-02T11:08:21.749Z","orderItems":[{"product_id":17,"quantity":1,"product_name":"arnicaa","small_description":"Healthcare product","product_description":"","category":"Homeopathy","price":1200,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"8","paymentMethod":"cod","customer_name":"gachibowili","phone_number":"9492037596","total_amount":1200}}
+{"time":"2026-09-02T11:11:23.096Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}

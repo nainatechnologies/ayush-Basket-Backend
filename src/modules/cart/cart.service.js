@@ -26,6 +26,13 @@ const getCartForUser = async (userId) => {
 
       subtotal += priceToUse * safeQuantity;
       
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+      
+      let finalImageUrl = product.imageUrl;
+      if (finalImageUrl && !finalImageUrl.startsWith('http')) {
+        finalImageUrl = baseUrl + (finalImageUrl.startsWith('/') ? '' : '/') + finalImageUrl;
+      }
+      
       return {
         id: item.id,
         quantity: safeQuantity,
@@ -33,7 +40,7 @@ const getCartForUser = async (userId) => {
         name: product.name,
         price: product.price,
         offerPrice: product.offerPrice,
-        image_url: product.imageUrl,
+        image_url: finalImageUrl,
         stock: product.stock
       };
     });

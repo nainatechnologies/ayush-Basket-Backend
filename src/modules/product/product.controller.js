@@ -1,6 +1,11 @@
 const productService = require('./product.service');
 const { processBase64Image } = require('../../utils/imageUtils');
 
+const getImageUrlFromFile = (file) => {
+  if (!file || !file.filename) return null;
+  return `/uploads/${file.filename}`;
+};
+
 // @desc    Get all products (CUSTOMER — never returns hidden products)
 // @route   GET /api/products
 // @access  Public
@@ -65,6 +70,15 @@ const createProduct = async (req, res) => {
       if (urls[2]) img3 = processBase64Image(urls[2]);
     }
 
+    if (req.files && req.files.length > 0) {
+      const imageFiles = req.files.filter(f => f.fieldname === 'image');
+      if (imageFiles[0]) img1 = getImageUrlFromFile(imageFiles[0]) || img1;
+      if (imageFiles[1]) img2 = getImageUrlFromFile(imageFiles[1]) || img2;
+      if (imageFiles[2]) img3 = getImageUrlFromFile(imageFiles[2]) || img3;
+    } else if (req.file) {
+      img1 = getImageUrlFromFile(req.file) || img1;
+    }
+
     const product = await productService.createNewProduct(req.body, { img1, img2, img3 });
 
     res.status(201).json({
@@ -87,6 +101,15 @@ const updateProduct = async (req, res) => {
     let img1 = processBase64Image(req.body.image_url || req.body.image || req.body.imageUrl) || '';
     let img2 = processBase64Image(req.body.image_url2 || req.body.imageUrl2) || undefined;
     let img3 = processBase64Image(req.body.image_url3 || req.body.imageUrl3) || undefined;
+
+    if (req.files && req.files.length > 0) {
+      const imageFiles = req.files.filter(f => f.fieldname === 'image');
+      if (imageFiles[0]) img1 = getImageUrlFromFile(imageFiles[0]) || img1;
+      if (imageFiles[1]) img2 = getImageUrlFromFile(imageFiles[1]) || img2;
+      if (imageFiles[2]) img3 = getImageUrlFromFile(imageFiles[2]) || img3;
+    } else if (req.file) {
+      img1 = getImageUrlFromFile(req.file) || img1;
+    }
 
     const formatted = await productService.updateExistingProduct(req.params.id, req.body, { img1, img2, img3 });
 

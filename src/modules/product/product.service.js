@@ -1,6 +1,13 @@
 const { Product, Category } = require('../../models');
 const { Op } = require('sequelize');
 
+const formatImageUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const getCustomerProducts = async (filters) => {
   const { search, category, stockStatus } = filters;
   let whereClause = { status: { [Op.ne]: 'Inactive' } };
@@ -38,7 +45,13 @@ const getCustomerProducts = async (filters) => {
     const prod = p.toJSON();
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
-    prod.image = prod.imageUrl || null;
+    
+    // Format all image URLs to include the backend host
+    prod.imageUrl = formatImageUrl(prod.imageUrl);
+    prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
+    prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+    
+    prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     return prod;
   });
@@ -79,7 +92,13 @@ const getAdminProductsList = async (filters) => {
     const prod = p.toJSON();
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
-    prod.image = prod.imageUrl || null;
+    
+    // Format all image URLs to include the backend host
+    prod.imageUrl = formatImageUrl(prod.imageUrl);
+    prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
+    prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+    
+    prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     return prod;
   });
@@ -98,7 +117,12 @@ const getProductDetails = async (id) => {
 
   const prod = product.toJSON();
   prod.category_name = prod.category ? prod.category.name : null;
-  prod.image = prod.imageUrl || null;
+  
+  prod.imageUrl = formatImageUrl(prod.imageUrl);
+  prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
+  prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+  
+  prod.image = prod.imageUrl;
   prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
 
   return prod;

@@ -1,6 +1,19 @@
 const revenueService = require('../revenue/revenue.service');
 const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory } = require('../../models');
 const couponService = require('../coupon/coupon.service');
+const { sendSMS } = require('../../utils/smsHelper');
+
+const sendOrderSMSWithFallback = async (phone, idealMsg, orderId) => {
+  // Try sending the ideal order message first
+  const res = await sendSMS(phone, idealMsg);
+  
+  if (!res || !res.success) {
+    console.log(`[SMS FALLBACK] Telecom blocked ideal message. Falling back to OTP template for Order #${orderId}`);
+    // Fallback to the registered OTP template to guarantee delivery
+    const fallbackMsg = `Dear Customer , your Registration OTP is ${orderId} for True Mentor Login -Support Team RisiEdu`;
+    await sendSMS(phone, fallbackMsg, process.env.SPEAR_UC_TID_REGISTRATION);
+  }
+};
 
 const createOrder = async (userId, data) => {
   const { orderItems, address_id, paymentMethod, couponCode } = data;
@@ -81,6 +94,12 @@ const createOrder = async (userId, data) => {
 
     console.log(`\n=========================================\nOrdered placed by Customer: User ID ${userId}, Order ID: ${order.id}\n=========================================\n`);
     
+    // Send SMS for Order Placed
+    if (address && address.phone) {
+      const msg = `Dear Customer, your order #${order.id} has been placed successfully with Ayush Basket!`;
+      sendOrderSMSWithFallback(address.phone, msg, order.id).catch(err => console.error('Order SMS Failed:', err.message));
+    }
+
     return {
       orderId: order.id,
       totalAmount
@@ -91,8 +110,30 @@ const createOrder = async (userId, data) => {
   }
 };
 
+const formatOrderImages = (order) => {
+  const orderObj = order.toJSON();
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  
+  if (orderObj.items) {
+    orderObj.items = orderObj.items.map(item => {
+      if (item.product && item.product.image_url) {
+        if (!item.product.image_url.startsWith('http') && !item.product.image_url.startsWith('data:image')) {
+          item.product.image_url = baseUrl + (item.product.image_url.startsWith('/') ? '' : '/') + item.product.image_url;
+        }
+      }
+      if (item.product && item.product.imageUrl) {
+        if (!item.product.imageUrl.startsWith('http') && !item.product.imageUrl.startsWith('data:image')) {
+          item.product.imageUrl = baseUrl + (item.product.imageUrl.startsWith('/') ? '' : '/') + item.product.imageUrl;
+        }
+      }
+      return item;
+    });
+  }
+  return orderObj;
+};
+
 const getCustomerOrders = async (userId) => {
-  return await Order.findAll({
+  const orders = await Order.findAll({
     where: { userId },
     order: [['created_at', 'DESC']],
     include: [
@@ -104,6 +145,7 @@ const getCustomerOrders = async (userId) => {
       { model: Address, as: 'address' }
     ]
   });
+  return orders.map(formatOrderImages);
 };
 
 const getOrderDetails = async (orderId, userId, role) => {
@@ -137,17 +179,21 @@ const getOrderDetails = async (orderId, userId, role) => {
     throw error;
   }
 
-  return order;
+  return formatOrderImages(order);
 };
 
 const updateOrderStatus = async (orderId, status, notes, adminId) => {
-  const order = await Order.findByPk(orderId);
+  const order = await Order.findByPk(orderId, {
+    include: [{ model: Address, as: 'address' }]
+  });
+  
   if (!order) {
     const error = new Error('Order not found');
     error.statusCode = 404;
     throw error;
   }
 
+  const prevStatus = (order.status || '').toLowerCase();
   order.status = status;
   
   if (status.toLowerCase() === 'completed') {
@@ -163,6 +209,22 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
     notes: notes || null,
     changedBy: adminId
   });
+
+  // Send SMS on specific status updates
+  if (order.address && order.address.phone) {
+    const s = status.toLowerCase();
+    // Only send the "dispatched" SMS if transitioning into accepted/out_for_delivery
+    if (s === 'accepted' || s === 'out_for_delivery') {
+      // Prevent sending the same dispatch message multiple times
+      if (prevStatus !== 'accepted' && prevStatus !== 'out_for_delivery') {
+        const msg = `Great news! Your order #${order.id} from Ayush Basket has been dispatched and is on its way to you.`;
+        sendOrderSMSWithFallback(order.address.phone, msg, order.id).catch(err => console.error('Status SMS Failed:', err.message));
+      }
+    } else if (s === 'completed') {
+      const msg = `Your order #${order.id} has been delivered successfully. Thank you for shopping with Ayush Basket!`;
+      sendOrderSMSWithFallback(order.address.phone, msg, order.id).catch(err => console.error('Status SMS Failed:', err.message));
+    }
+  }
 
   return order;
 };

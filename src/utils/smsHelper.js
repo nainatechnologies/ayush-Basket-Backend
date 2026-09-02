@@ -45,6 +45,10 @@ const sendSMS = async (mobile, message, templateId = '') => {
     
     console.log(`[SPEAR_UC RESPONSE]:`, response.data);
 
+    if (response.data && response.data.status === 'error') {
+      return { success: false, data: response.data };
+    }
+
     return {
       success: true,
       data: response.data
