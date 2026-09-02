@@ -38,9 +38,13 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? (process.env.FRONTEND_URL || 'https://your-production-url.com')
-    : '*',
+  origin: function (origin, callback) {
+    if (process.env.NODE_ENV === 'production') {
+      callback(null, process.env.FRONTEND_URL || 'https://your-production-url.com');
+    } else {
+      callback(null, origin || true);
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true, // Necessary if you use cookies

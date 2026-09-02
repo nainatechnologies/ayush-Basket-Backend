@@ -12,7 +12,8 @@ const addOrderSchema = z.object({
       quantity: numericString.refine(val => val > 0, 'Quantity must be a positive integer')
     })).min(1, 'No order items provided'),
     address_id: z.union([z.number(), z.string()]).refine(val => !!val, { message: 'Delivery address is required' }),
-    paymentMethod: z.string().optional()
+    paymentMethod: z.string().optional(),
+    couponCode: z.string().optional()
   })
 });
 

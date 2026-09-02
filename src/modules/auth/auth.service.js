@@ -236,12 +236,12 @@ const resetPasswordWithToken = async (resetToken, newPassword) => {
     throw error;
   }
 
-  const isSame = await bcrypt.compare(newPassword, user.password);
-  if (isSame) {
-    const error = new Error('New password must be different from current password.');
-    error.statusCode = 400;
-    throw error;
-  }
+  // const isSame = await bcrypt.compare(newPassword, user.password);
+  // if (isSame) {
+  //   const error = new Error('New password must be different from current password.');
+  //   error.statusCode = 400;
+  //   throw error;
+  // }
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(newPassword, salt);

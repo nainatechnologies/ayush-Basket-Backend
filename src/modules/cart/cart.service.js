@@ -18,11 +18,17 @@ const getCartForUser = async (userId) => {
     .map(item => {
       const product = item.product;
       const priceToUse = product.offerPrice ? parseFloat(product.offerPrice) : parseFloat(product.price);
-      subtotal += priceToUse * item.quantity;
+      // If stock has dropped below what they had in cart, adjust it
+      let safeQuantity = item.quantity;
+      if (product.stock < safeQuantity) {
+        safeQuantity = product.stock;
+      }
+
+      subtotal += priceToUse * safeQuantity;
       
       return {
         id: item.id,
-        quantity: item.quantity,
+        quantity: safeQuantity,
         product_id: product.id,
         name: product.name,
         price: product.price,

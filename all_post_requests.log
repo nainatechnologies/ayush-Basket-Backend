@@ -47,3 +47,7 @@
 {"time":"2026-09-02T06:15:48.336Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya@123"}}
 {"time":"2026-09-02T06:16:02.386Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya123@"}}
 {"time":"2026-09-02T06:16:04.217Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya123@"}}
+{"time":"2026-09-02T07:58:52.052Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T07:59:16.823Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"493727"}}
+{"time":"2026-09-02T07:59:31.014Z","url":"/api/auth/reset-password","body":{"resetToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwicHVycG9zZSI6InBhc3N3b3JkX3Jlc2V0IiwiaWF0IjoxNzg4MzM1OTU3LCJleHAiOjE3ODgzMzY4NTd9.gQC0ooKSOtrkjJ3mZYOXSNIQkrRu6RxIshErhYdK_SY","newPassword":"Alekya@#123","confirmPassword":"Alekya@#123"}}
+{"time":"2026-09-02T07:59:40.201Z","url":"/api/auth/login","body":{"email":"alekyasunkari262003@gmail.com","password":"Alekya@#123"}}
