@@ -8,7 +8,14 @@ const registerSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    phone: z.string().regex(indianPhoneRegex, 'Please enter a valid 10-digit Indian mobile number').optional().nullable(),
+    phone: z.string().regex(indianPhoneRegex, 'Please enter a valid 10-digit Indian mobile number'),
+    otp: z.string().length(6, 'OTP must be exactly 6 digits')
+  })
+});
+
+const sendRegistrationOtpSchema = z.object({
+  body: z.object({
+    phone: z.string().regex(indianPhoneRegex, 'Please enter a valid 10-digit Indian mobile number')
   })
 });
 
@@ -45,6 +52,7 @@ const resetPasswordSchema = z.object({
 
 module.exports = {
   registerSchema,
+  sendRegistrationOtpSchema,
   loginSchema,
   forgotPasswordSchema,
   verifyOtpSchema,

@@ -30,6 +30,31 @@ const register = async (req, res) => {
   }
 };
 
+// @desc    Send OTP for new customer registration
+// @route   POST /api/auth/send-registration-otp
+// @access  Public
+const sendRegistrationOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Phone number is required.' });
+    }
+
+    await authService.sendRegistrationOTP(phone);
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent successfully to your phone.',
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Error in sendRegistrationOtp:', error);
+    res.status(500).json({ success: false, message: 'Server error processing request.' });
+  }
+};
+
 // @desc    Customer Login
 // @route   POST /api/auth/login
 // @access  Public
@@ -120,4 +145,4 @@ const resetPassword = async (req, res) => {
 };
 
 
-module.exports = { register, login, forgotPassword, verifyOtp, resetPassword };
+module.exports = { register, sendRegistrationOtp, login, forgotPassword, verifyOtp, resetPassword };

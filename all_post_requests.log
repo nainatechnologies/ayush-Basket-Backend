@@ -12,3 +12,38 @@
 {"time":"2026-09-01T10:01:18.959Z","url":"/api/coupons/validate","body":{"code":"WELCOME100","cartTotal":500}}
 {"time":"2026-09-01T12:02:07.721Z","url":"/api/products"}
 {"time":"2026-09-01T12:02:09.197Z","url":"/api/products"}
+{"time":"2026-09-02T05:01:11.318Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T05:02:20.207Z","url":"/api/auth/send-registration-otp","body":{"phone":"9052237152"}}
+{"time":"2026-09-02T05:11:10.288Z","url":"/api/auth/send-registration-otp","body":{"phone":"9052237152"}}
+{"time":"2026-09-02T05:11:35.791Z","url":"/api/auth/send-registration-otp","body":{"phone":"9052237152"}}
+{"time":"2026-09-02T05:18:29.426Z","url":"/api/auth/send-registration-otp","body":{"phone":"9052237152"}}
+{"time":"2026-09-02T05:19:03.286Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T05:36:21.038Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T05:36:41.023Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya@#123","phone":"7569363718","otp":"381784"}}
+{"time":"2026-09-02T05:36:56.579Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya@#123","phone":"7569363718","otp":"381784"}}
+{"time":"2026-09-02T05:36:59.905Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari262003@gmail.com","password":"Alekya@#123","phone":"7569363718","otp":"381784"}}
+{"time":"2026-09-02T05:37:39.146Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T05:38:04.447Z","url":"/api/auth/register","body":{"name":"Alekya Sunkari","email":"alekyasunkari855@gmail.com","password":"Alekya@#123","phone":"7569363718","otp":"349538"}}
+{"time":"2026-09-02T05:39:05.378Z","url":"/api/auth/send-registration-otp","body":{"phone":"7816039854"}}
+{"time":"2026-09-02T05:39:28.713Z","url":"/api/auth/register","body":{"name":"sowmya","email":"sowmya@gmail.com","password":"Sowmya@123","phone":"7816039854","otp":"447797"}}
+{"time":"2026-09-02T05:42:34.892Z","url":"/api/auth/forgot-password","body":{"phone":"7816039854"}}
+{"time":"2026-09-02T05:48:35.333Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T05:51:33.452Z","url":"/api/auth/forgot-password","body":{"phone":"7816039854"}}
+{"time":"2026-09-02T05:51:52.650Z","url":"/api/auth/verify-otp","body":{"phone":"7816039854","otp":"257267"}}
+{"time":"2026-09-02T05:55:59.029Z","url":"/api/auth/verify-otp","body":{"phone":"7816039854","otp":"257267"}}
+{"time":"2026-09-02T05:57:49.951Z","url":"/api/auth/verify-otp","body":{"phone":"7816039854","otp":"257262"}}
+{"time":"2026-09-02T06:00:59.184Z","url":"/api/auth/verify-otp","body":{"phone":"7816039854","otp":"257267"}}
+{"time":"2026-09-02T06:01:00.776Z","url":"/api/auth/verify-otp","body":{"phone":"7816039854","otp":"257267"}}
+{"time":"2026-09-02T06:02:08.257Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T06:03:19.907Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T06:04:25.278Z","url":"/api/auth/send-registration-otp","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T06:05:12.681Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"197353"}}
+{"time":"2026-09-02T06:10:47.344Z","url":"/api/auth/verify-otp","body":{"phone":"7569363718","otp":"197353"}}
+{"time":"2026-09-02T06:12:03.163Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T06:12:32.832Z","url":"/api/auth/forgot-password","body":{"phone":"7569363718"}}
+{"time":"2026-09-02T06:15:31.662Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"Alekya@#123"}}
+{"time":"2026-09-02T06:15:37.337Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"Alekya@123"}}
+{"time":"2026-09-02T06:15:46.785Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya@123"}}
+{"time":"2026-09-02T06:15:48.336Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya@123"}}
+{"time":"2026-09-02T06:16:02.386Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya123@"}}
+{"time":"2026-09-02T06:16:04.217Z","url":"/api/auth/login","body":{"email":"alekyasunkari855@gmail.com","password":"alekya123@"}}

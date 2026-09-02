@@ -8,6 +8,7 @@ const Order = require('../modules/order/order.model');
 const OrderItem = require('../modules/order/orderItem.model');
 const CartItem = require('../modules/cart/cartItem.model');
 const OtpToken = require('../modules/user/otpToken.model');
+const RegistrationOtp = require('../modules/auth/registrationOtp.model');
 const Prescription = require('../modules/prescription/prescription.model');
 const SupportTicket = require('../modules/support/supportTicket.model');
 const Coupon = require('../modules/coupon/coupon.model');
@@ -108,6 +109,7 @@ module.exports = {
   OrderItem,
   CartItem,
   OtpToken,
+  RegistrationOtp,
   Prescription,
   SupportTicket,
   Coupon,

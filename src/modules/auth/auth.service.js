@@ -1,28 +1,96 @@
-const { User, OtpToken } = require('../../models');
+const { User, OtpToken, RegistrationOtp } = require('../../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendSMS } = require('../../utils/smsHelper');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+const sendRegistrationOTP = async (phone) => {
+  const normalizedPhone = phone.trim();
+  
+  // Check if user already exists
+  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  if (existingPhone) {
+    const error = new Error('An account with this phone number already exists.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  
+  // Save OTP to database
+  await RegistrationOtp.create({
+    phone: normalizedPhone,
+    otp,
+    expiresAt,
+    used: false
+  });
+
+  // Print in console for easy testing
+  console.log('\n=============================================');
+  console.log(`[REGISTRATION OTP GENERATED] OTP for ${normalizedPhone} is: ${otp}`);
+  console.log('=============================================\n');
+
+  // Send SMS using SpearUC
+  const message = `Dear Customer , your Registration OTP is ${otp} for True Mentor Login -Support Team RisiEdu`;
+  await sendSMS(normalizedPhone, message, process.env.SPEAR_UC_TID_REGISTRATION);
+
+  return true;
+};
+
 const registerUser = async (data) => {
   const normalizedEmail = data.email.toLowerCase().trim();
+  const normalizedPhone = data.phone.trim();
+
+  // 1. Verify OTP First
+  if (!data.otp) {
+    const error = new Error('OTP is required for registration.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const tokenRecord = await RegistrationOtp.findOne({
+    where: { phone: normalizedPhone, otp, used: false },
+    order: [['created_at', 'DESC']]
+  });
+
+  if (!tokenRecord) {
+    const error = new Error('Invalid OTP or no pending request found.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const expiresTime = typeof tokenRecord.expiresAt === 'string' 
+    ? new Date(tokenRecord.expiresAt.endsWith('Z') ? tokenRecord.expiresAt : tokenRecord.expiresAt + 'Z').getTime()
+    : new Date(tokenRecord.expiresAt).getTime();
+
+  if (Date.now() > expiresTime) {
+    const error = new Error('OTP has expired. Please request a new one.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Mark as used
+  tokenRecord.used = true;
+  await tokenRecord.save();
+
+  // 2. Ensure email/phone aren't already taken
   const existing = await User.findOne({ where: { email: normalizedEmail } });
-  
   if (existing) {
     const error = new Error('An account with this email already exists.');
     error.statusCode = 409;
     throw error;
   }
 
-  if (data.phone) {
-    const existingPhone = await User.findOne({ where: { phone: data.phone.trim() } });
-    if (existingPhone) {
-      const error = new Error('An account with this phone number already exists.');
-      error.statusCode = 409;
-      throw error;
-    }
+  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  if (existingPhone) {
+    const error = new Error('An account with this phone number already exists.');
+    error.statusCode = 409;
+    throw error;
   }
 
+  // 3. Create User
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(data.password, salt);
 
@@ -30,9 +98,11 @@ const registerUser = async (data) => {
     name: data.name.trim(),
     email: normalizedEmail,
     password: hashedPassword,
-    phone: data.phone || null,
+    phone: normalizedPhone,
     role: 'customer'
   });
+
+  // Record successfully used, no need to clear cache since we used DB
 
   const token = jwt.sign(
     { id: newUser.id, role: newUser.role },
@@ -91,9 +161,13 @@ const generateForgotPasswordOTP = async (phone) => {
 
   if (process.env.NODE_ENV !== 'production') {
     console.log('\n=============================================');
-    console.log(`[CUSTOMER FORGOT PASSWORD] OTP for ${user.email} is: ${otp}`);
+    console.log(`[CUSTOMER FORGOT PASSWORD] OTP for phone: ${user.phone} is: ${otp}`);
     console.log('=============================================\n');
   }
+
+  // Send SMS using SpearUC
+  const message = `Dear Customer , your Registration OTP is ${otp} for True Mentor Login -Support Team RisiEdu`;
+  await sendSMS(user.phone, message, process.env.SPEAR_UC_TID_REGISTRATION);
 
   return user;
 };
@@ -178,6 +252,7 @@ const resetPasswordWithToken = async (resetToken, newPassword) => {
 
 
 module.exports = {
+  sendRegistrationOTP,
   registerUser,
   loginUser,
   generateForgotPasswordOTP,

@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, forgotPassword, verifyOtp, resetPassword } = require('./auth.controller');
+const { register, sendRegistrationOtp, login, forgotPassword, verifyOtp, resetPassword } = require('./auth.controller');
 
 const validate = require('../../middleware/validate.middleware');
-const { registerSchema, loginSchema, forgotPasswordSchema, verifyOtpSchema, resetPasswordSchema } = require('./auth.validation');
+const { registerSchema, sendRegistrationOtpSchema, loginSchema, forgotPasswordSchema, verifyOtpSchema, resetPasswordSchema } = require('./auth.validation');
+
+// @route   POST /api/auth/send-registration-otp
+// @desc    Send OTP before registration
+// @access  Public
+router.post('/send-registration-otp', validate(sendRegistrationOtpSchema), sendRegistrationOtp);
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
