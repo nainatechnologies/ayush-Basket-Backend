@@ -77,7 +77,7 @@ const createOrder = async (userId, data) => {
       totalAmount: finalAmount,
       paymentMethod: paymentMethod || 'cod',
       status: 'pending',
-      paymentStatus: 'pending'
+      paymentStatus: (paymentMethod && paymentMethod.toLowerCase() !== 'cod') ? 'paid' : 'pending'
     }, { transaction: t });
 
     for (const item of verifiedItems) {
@@ -116,15 +116,19 @@ const formatOrderImages = (order) => {
   
   if (orderObj.items) {
     orderObj.items = orderObj.items.map(item => {
-      if (item.product && item.product.image_url) {
-        if (!item.product.image_url.startsWith('http') && !item.product.image_url.startsWith('data:image')) {
-          item.product.image_url = baseUrl + (item.product.image_url.startsWith('/') ? '' : '/') + item.product.image_url;
+      const p = item.product;
+      if (p) {
+        let finalImg = p.imageUrl || p.image_url || p.image || null;
+        if (finalImg && !finalImg.startsWith('http') && !finalImg.startsWith('data:image')) {
+          finalImg = baseUrl + (finalImg.startsWith('/') ? '' : '/') + finalImg;
         }
-      }
-      if (item.product && item.product.imageUrl) {
-        if (!item.product.imageUrl.startsWith('http') && !item.product.imageUrl.startsWith('data:image')) {
-          item.product.imageUrl = baseUrl + (item.product.imageUrl.startsWith('/') ? '' : '/') + item.product.imageUrl;
-        }
+        p.imageUrl = finalImg;
+        p.image_url = finalImg;
+        p.image = finalImg;
+        
+        item.imageUrl = finalImg;
+        item.image_url = finalImg;
+        item.image = finalImg;
       }
       return item;
     });

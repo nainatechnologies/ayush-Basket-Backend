@@ -20,6 +20,10 @@ router.route('/myorders')
 router.route('/:id')
   .get(protect, getOrderById);
 
+// GET    /api/orders/:id/invoice — download order tax invoice
+router.route('/:id/invoice')
+  .get(protect, require('./order.controller').downloadInvoice);
+
 // PUT    /api/orders/:id/status   — update order status (admin only)
 router.route('/:id/status')
   .put(protect, admin, validate(updateOrderStatusSchema), updateOrderStatus);

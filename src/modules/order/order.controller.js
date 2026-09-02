@@ -87,11 +87,36 @@ const getOrders = async (req, res) => {
   }
 };
 
+const { generateInvoice } = require('../../utils/invoiceGenerator');
+
+// @desc    Download Tax Invoice for order
+// @route   GET /api/orders/:id/invoice
+// @access  Private
+const downloadInvoice = async (req, res) => {
+  try {
+    const order = await orderService.getOrderDetails(req.params.id, req.user.id, req.user.role);
+    
+    // Set headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=AyushBasket-Invoice-${order.id}.pdf`);
+    
+    // Generate and pipe the PDF
+    generateInvoice(order, res);
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
+    console.error('Error generating invoice:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Server error generating invoice' });
+    }
+  }
+};
+
 module.exports = {
   addOrderItems,
   getMyOrders,
   getOrders,
   getOrderById,
   updateOrderStatus,
-  cancelOrder
+  cancelOrder,
+  downloadInvoice
 };
