@@ -22,10 +22,14 @@ const sequelize = new Sequelize(
     dialect: 'mysql',
     logging: false, // set to console.log to see SQL queries
     pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
+      max: process.env.NODE_ENV === 'production' ? 20 : 5,
+      min: process.env.NODE_ENV === 'production' ? 2 : 0,
+      acquire: 60000,
       idle: 10000
+    },
+    retry: {
+      match: [/Deadlock/i, /SequelizeConnectionError/i],
+      max: 3,
     },
     define: {
       underscored: true,

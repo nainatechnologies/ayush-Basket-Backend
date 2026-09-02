@@ -4,6 +4,8 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const morgan = require('morgan');
 const { sequelize, syncDB } = require('./models');
 
 const app = express();
@@ -25,14 +27,26 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Create a write stream (in append mode) for production access logs
+if (process.env.NODE_ENV === 'production') {
+  const logDirectory = path.join(__dirname, '../logs');
+  if (!fs.existsSync(logDirectory)) fs.mkdirSync(logDirectory);
+  const accessLogStream = fs.createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
+  app.use(morgan('combined', { stream: accessLogStream }));
+} else {
+  app.use(morgan('dev'));
+}
+
 app.use(cors({
-  // In development, allow all origins. Set CORS_ORIGIN env var in production.
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.NODE_ENV === 'production' 
+    ? (process.env.FRONTEND_URL || 'https://your-production-url.com')
+    : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Necessary if you use cookies
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increased slightly in case of very large Base64 images
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
 // Global API Logger Middleware
