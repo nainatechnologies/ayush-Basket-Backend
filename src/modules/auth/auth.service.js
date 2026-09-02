@@ -51,7 +51,7 @@ const registerUser = async (data) => {
   }
 
   const tokenRecord = await RegistrationOtp.findOne({
-    where: { phone: normalizedPhone, otp, used: false },
+    where: { phone: normalizedPhone, otp: data.otp, used: false },
     order: [['created_at', 'DESC']]
   });
 
