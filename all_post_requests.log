@@ -116,3 +116,6 @@
 {"time":"2026-09-03T05:15:01.670Z","url":"/api/cart/items","body":{"product_id":19,"quantity":1}}
 {"time":"2026-09-03T05:15:01.682Z","url":"/api/cart/items","body":{"product_id":19,"quantity":1}}
 {"time":"2026-09-03T05:22:36.609Z","url":"/api/products"}
+{"time":"2026-09-03T09:05:58.480Z","url":"/api/prescriptions"}
+{"time":"2026-09-03T09:14:14.633Z","url":"/api/prescriptions"}
+{"time":"2026-09-03T09:23:55.289Z","url":"/api/prescriptions"}

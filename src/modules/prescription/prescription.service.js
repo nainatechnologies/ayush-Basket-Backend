@@ -37,12 +37,27 @@ const getAllPrescriptionsList = async (filters) => {
     whereClause.status = filters.status.toLowerCase();
   }
 
-  return await Prescription.findAll({
+  const prescriptions = await Prescription.findAll({
     where: whereClause,
     include: [
       { model: User, as: 'user', attributes: ['name', 'email', 'phone'] }
     ],
     order: [['created_at', 'DESC']]
+  });
+
+  return prescriptions.map(p => {
+    const pres = p.toJSON();
+    if (pres.user) {
+      if (pres.user.phone) {
+        pres.patient_phone = pres.user.phone;
+        pres.user_phone = pres.user.phone; 
+      }
+      if (pres.user.name && !pres.patient_name) {
+        pres.patient_name = pres.user.name;
+        pres.user_name = pres.user.name;
+      }
+    }
+    return pres;
   });
 };
 
@@ -58,7 +73,19 @@ const getPrescriptionDetails = async (id) => {
     error.statusCode = 404;
     throw error;
   }
-  return prescription;
+  
+  const pres = prescription.toJSON();
+  if (pres.user) {
+    if (pres.user.phone) {
+      pres.patient_phone = pres.user.phone;
+      pres.user_phone = pres.user.phone; 
+    }
+    if (pres.user.name && !pres.patient_name) {
+      pres.patient_name = pres.user.name;
+      pres.user_name = pres.user.name;
+    }
+  }
+  return pres;
 };
 
 const approveAndCreateOrder = async (prescriptionId, adminId, items, addressId) => {
