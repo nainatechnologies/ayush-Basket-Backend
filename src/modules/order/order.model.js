@@ -36,6 +36,10 @@ const Order = sequelize.define('Order', {
   transactionId: {
     type: DataTypes.STRING,
     field: 'transaction_id'
+  },
+  paymentProof: {
+    type: DataTypes.STRING,
+    field: 'payment_proof'
   }
 }, {
   tableName: 'orders'

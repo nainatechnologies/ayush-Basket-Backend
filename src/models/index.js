@@ -16,6 +16,7 @@ const Review = require('../modules/review/review.model');
 const WishlistItem = require('../modules/wishlist/wishlistItem.model');
 const OrderStatusHistory = require('../modules/order/orderStatusHistory.model');
 const DailyRevenue = require('../modules/revenue/dailyRevenue.model');
+const OrderNotification = require('../modules/order/orderNotification.model');
 
 // Relationships
 
@@ -91,6 +92,10 @@ Review.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 Coupon.hasMany(Order, { foreignKey: 'couponId', as: 'orders' });
 Order.belongsTo(Coupon, { foreignKey: 'couponId', as: 'coupon' });
 
+// Order <-> OrderNotification
+Order.hasMany(OrderNotification, { foreignKey: 'orderId', as: 'notifications' });
+OrderNotification.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+
 // Optional: Sync function exported for server.js
 const syncDB = async () => {
   // Turn off alter: true to prevent deadlock during hot-reloads
@@ -116,5 +121,6 @@ module.exports = {
   Review,
   WishlistItem,
   OrderStatusHistory,
-  DailyRevenue
+  DailyRevenue,
+  OrderNotification
 };

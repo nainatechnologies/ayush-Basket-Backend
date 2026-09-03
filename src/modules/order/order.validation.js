@@ -13,7 +13,9 @@ const addOrderSchema = z.object({
     })).min(1, 'No order items provided'),
     address_id: z.union([z.number(), z.string()]).refine(val => !!val, { message: 'Delivery address is required' }),
     paymentMethod: z.string().optional(),
-    couponCode: z.string().optional()
+    couponCode: z.string().optional(),
+    paymentProof: z.string().optional(),
+    transactionId: z.string().optional()
   })
 });
 

@@ -111,6 +111,26 @@ const downloadInvoice = async (req, res) => {
   }
 };
 
+// @desc    Upload Payment Proof
+// @route   POST /api/orders/upload-payment
+// @access  Private
+const uploadPaymentProof = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.status(200).json({
+      success: true,
+      message: 'Payment proof uploaded successfully',
+      url: fileUrl
+    });
+  } catch (error) {
+    console.error('Error uploading payment proof:', error);
+    res.status(500).json({ success: false, message: 'Server error uploading payment proof' });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getMyOrders,
@@ -118,5 +138,6 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   cancelOrder,
-  downloadInvoice
+  downloadInvoice,
+  uploadPaymentProof
 };

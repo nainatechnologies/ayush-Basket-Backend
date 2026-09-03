@@ -1,22 +1,10 @@
 const revenueService = require('../revenue/revenue.service');
 const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory } = require('../../models');
 const couponService = require('../coupon/coupon.service');
-const { sendSMS } = require('../../utils/smsHelper');
-
-const sendOrderSMSWithFallback = async (phone, idealMsg, orderId) => {
-  // Try sending the ideal order message first
-  const res = await sendSMS(phone, idealMsg);
-  
-  if (!res || !res.success) {
-    console.log(`[SMS FALLBACK] Telecom blocked ideal message. Falling back to OTP template for Order #${orderId}`);
-    // Fallback to the registered OTP template to guarantee delivery
-    const fallbackMsg = `Dear Customer , your Registration OTP is ${orderId} for True Mentor Login -Support Team RisiEdu`;
-    await sendSMS(phone, fallbackMsg, process.env.SPEAR_UC_TID_REGISTRATION);
-  }
-};
+const smsService = require('../../services/smsService');
 
 const createOrder = async (userId, data) => {
-  const { orderItems, address_id, paymentMethod, couponCode } = data;
+  const { orderItems, address_id, paymentMethod, couponCode, paymentProof, transactionId } = data;
 
   const address = await Address.findOne({ where: { id: address_id, userId } });
   if (!address) {
@@ -76,6 +64,8 @@ const createOrder = async (userId, data) => {
       couponId: appliedCouponId,
       totalAmount: finalAmount,
       paymentMethod: paymentMethod || 'cod',
+      paymentProof: paymentProof || null,
+      transactionId: transactionId || null,
       status: 'pending',
       paymentStatus: (paymentMethod && paymentMethod.toLowerCase() !== 'cod') ? 'paid' : 'pending'
     }, { transaction: t });
@@ -96,8 +86,7 @@ const createOrder = async (userId, data) => {
     
     // Send SMS for Order Placed
     if (address && address.phone) {
-      const msg = `Dear Customer, your order #${order.id} has been placed successfully with Ayush Basket!`;
-      sendOrderSMSWithFallback(address.phone, msg, order.id).catch(err => console.error('Order SMS Failed:', err.message));
+      smsService.sendOrderPlacedSMS(order, address.phone);
     }
 
     return {
@@ -217,16 +206,11 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
   // Send SMS on specific status updates
   if (order.address && order.address.phone) {
     const s = status.toLowerCase();
-    // Only send the "dispatched" SMS if transitioning into accepted/out_for_delivery
-    if (s === 'accepted' || s === 'out_for_delivery') {
-      // Prevent sending the same dispatch message multiple times
-      if (prevStatus !== 'accepted' && prevStatus !== 'out_for_delivery') {
-        const msg = `Great news! Your order #${order.id} from Ayush Basket has been dispatched and is on its way to you.`;
-        sendOrderSMSWithFallback(order.address.phone, msg, order.id).catch(err => console.error('Status SMS Failed:', err.message));
-      }
+    
+    if (s === 'accepted' || s === 'confirmed') {
+      smsService.sendOrderAcceptedSMS(order, order.address.phone);
     } else if (s === 'completed') {
-      const msg = `Your order #${order.id} has been delivered successfully. Thank you for shopping with Ayush Basket!`;
-      sendOrderSMSWithFallback(order.address.phone, msg, order.id).catch(err => console.error('Status SMS Failed:', err.message));
+      smsService.sendOrderCompletedSMS(order, order.address.phone);
     }
   }
 

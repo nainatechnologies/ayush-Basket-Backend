@@ -6,6 +6,12 @@ const { protect, admin } = require('../../middleware/authMiddleware');
 const validate = require('../../middleware/validate.middleware');
 const { addOrderSchema, updateOrderStatusSchema, cancelOrderSchema } = require('./order.validation');
 
+const upload = require('../../middleware/uploadMiddleware');
+
+// POST   /api/orders/upload-payment — upload payment proof screenshot (customer)
+router.route('/upload-payment')
+  .post(protect, upload.single('paymentProof'), require('./order.controller').uploadPaymentProof);
+
 // POST   /api/orders        — place an order (customer)
 // GET    /api/orders        — get all orders (admin only)
 router.route('/')
