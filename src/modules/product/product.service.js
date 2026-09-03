@@ -10,7 +10,7 @@ const formatImageUrl = (url) => {
 
 const getCustomerProducts = async (filters) => {
   const { search, category, stockStatus } = filters;
-  let whereClause = { status: { [Op.ne]: 'Inactive' } };
+  let whereClause = { status: { [Op.notIn]: ['hidden', 'Inactive', 'inactive'] } };
 
   if (search) {
     whereClause[Op.or] = [
@@ -53,6 +53,23 @@ const getCustomerProducts = async (filters) => {
     
     prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
+    
+    // Add aliases for frontend compatibility
+    prod.package_size = prod.packageSize;
+    prod.packSize = prod.packageSize;
+    prod.pack_size = prod.packageSize;
+    
+    prod.full_description = prod.fullDescription;
+    prod.usage = prod.fullDescription;
+    prod.safety_advice = prod.fullDescription;
+    prod.storage_advice = prod.fullDescription;
+
+    if (Number(prod.stock) <= 0) {
+        prod.status = 'Out of Stock';
+    } else if (prod.status === 'active' || prod.status === 'Active') {
+        prod.status = 'In Stock';
+    }
+
     return prod;
   });
 };
@@ -100,6 +117,23 @@ const getAdminProductsList = async (filters) => {
     
     prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
+    
+    // Add aliases for frontend compatibility
+    prod.package_size = prod.packageSize;
+    prod.packSize = prod.packageSize;
+    prod.pack_size = prod.packageSize;
+    
+    prod.full_description = prod.fullDescription;
+    prod.usage = prod.fullDescription;
+    prod.safety_advice = prod.fullDescription;
+    prod.storage_advice = prod.fullDescription;
+
+    if (Number(prod.stock) <= 0) {
+        prod.status = 'Out of Stock';
+    } else if (prod.status === 'active' || prod.status === 'Active') {
+        prod.status = 'In Stock';
+    }
+
     return prod;
   });
 };
@@ -124,6 +158,23 @@ const getProductDetails = async (id) => {
   
   prod.image = prod.imageUrl;
   prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
+
+  // Add aliases for frontend compatibility
+  prod.package_size = prod.packageSize;
+  prod.packSize = prod.packageSize;
+  prod.pack_size = prod.packageSize;
+  
+  prod.full_description = prod.fullDescription;
+  prod.usage = prod.fullDescription;
+  prod.safety_advice = prod.fullDescription;
+  prod.storage_advice = prod.fullDescription;
+
+  // If stock is 0 or less, force the status to Out of Stock
+  if (Number(prod.stock) <= 0) {
+      prod.status = 'Out of Stock';
+  } else if (prod.status === 'active' || prod.status === 'Active') {
+      prod.status = 'In Stock';
+  }
 
   return prod;
 };
@@ -226,7 +277,7 @@ const updateExistingProduct = async (id, data, images) => {
     if (images.img2 !== undefined) prod.imageUrl2 = images.img2;
     if (images.img3 !== undefined) prod.imageUrl3 = images.img3;
 
-    const actualPackSize = data.packSize !== undefined ? data.packSize : data.package_size;
+    const actualPackSize = data.packageSize !== undefined ? data.packageSize : (data.packSize !== undefined ? data.packSize : data.package_size);
     prod.packageSize = actualPackSize !== undefined ? actualPackSize : prod.packageSize;
     prod.potency = data.potency !== undefined ? data.potency : prod.potency;
     prod.composition = data.composition !== undefined ? data.composition : prod.composition;

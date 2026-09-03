@@ -112,3 +112,7 @@
 {"time":"2026-09-03T04:37:22.459Z","url":"/api/cart/items","body":{"product_id":13,"quantity":1}}
 {"time":"2026-09-03T04:37:22.469Z","url":"/api/cart/items","body":{"product_id":13,"quantity":1}}
 {"time":"2026-09-03T04:37:26.902Z","url":"/api/orders","body":{"orderId":"HC-689613","ordered_date":"2026-09-03T04:37:26.898Z","orderItems":[{"product_id":13,"quantity":1,"product_name":"aass","small_description":"Healthcare product","product_description":"","category":"Joint Pain","price":700,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"1","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":700}}
+{"time":"2026-09-03T05:14:39.178Z","url":"/api/products"}
+{"time":"2026-09-03T05:15:01.670Z","url":"/api/cart/items","body":{"product_id":19,"quantity":1}}
+{"time":"2026-09-03T05:15:01.682Z","url":"/api/cart/items","body":{"product_id":19,"quantity":1}}
+{"time":"2026-09-03T05:22:36.609Z","url":"/api/products"}

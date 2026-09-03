@@ -115,8 +115,35 @@ const sendOrderCompletedSMS = async (order, phone) => {
   }
 };
 
+/**
+ * Triggers the PRESCRIPTION_UPLOADED SMS.
+ */
+const sendPrescriptionUploadedSMS = async (prescription, phone) => {
+  const type = 'PRESCRIPTION_UPLOADED';
+  try {
+    if (!phone) return;
+    const templateId = process.env.DLT_TEMPLATE_ID_ORDER_PLACED || process.env.SPEAR_UC_TID_REGISTRATION;
+    const msg = (templateId === process.env.SPEAR_UC_TID_REGISTRATION)
+      ? `Dear Customer , your Registration OTP is ${prescription.id} for True Mentor Login -Support Team RisiEdu`
+      : `Dear Customer, your AyushBasket prescription upload #${prescription.id} has been received successfully. We will call you shortly to confirm your order. Thank you.`;
+    
+    let response = { success: true };
+    if (process.env.SMS_ENABLED === 'true') {
+      const { sendSMS } = require('../utils/smsHelper');
+      response = await sendSMS(phone, msg, templateId);
+    } else {
+      console.log(`[DEV MODE] Skipping real SMS. Would have sent Prescription Uploaded SMS to ${phone}`);
+    }
+    
+    await logNotification(prescription.id, type, phone, templateId, response);
+  } catch (error) {
+    console.error(`[SMS Service] Failed to send ${type} SMS for Prescription #${prescription.id}:`, error.message);
+  }
+};
+
 module.exports = {
   sendOrderPlacedSMS,
   sendOrderAcceptedSMS,
-  sendOrderCompletedSMS
+  sendOrderCompletedSMS,
+  sendPrescriptionUploadedSMS
 };

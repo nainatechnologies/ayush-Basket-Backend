@@ -1,4 +1,5 @@
 const prescriptionService = require('./prescription.service');
+const smsService = require('../../services/smsService');
 
 // @desc    Customer uploads a prescription
 // @route   POST /api/prescriptions
@@ -7,6 +8,14 @@ const uploadPrescription = async (req, res) => {
   try {
     const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const prescription = await prescriptionService.uploadNewPrescription(req.user.id, req.body || {}, fileUrl);
+    
+    // Trigger SMS notification
+    const userPhone = req.body.phone || req.user.phone;
+    if (userPhone) {
+      smsService.sendPrescriptionUploadedSMS(prescription, userPhone).catch(err => {
+        console.error('Failed to send prescription SMS:', err.message);
+      });
+    }
     
     res.status(201).json({
       success: true,
