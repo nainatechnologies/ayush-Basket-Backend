@@ -13,6 +13,7 @@ const uploadPrescriptionSchema = z.object({
     patientName: z.string().optional(),
     doctor_name: z.string().optional(),
     doctorName: z.string().optional(),
+    address: z.string().optional(),
     image_url: z.string().optional()
   }).passthrough() // Allow file data
 });

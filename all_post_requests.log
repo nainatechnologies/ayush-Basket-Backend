@@ -119,3 +119,14 @@
 {"time":"2026-09-03T09:05:58.480Z","url":"/api/prescriptions"}
 {"time":"2026-09-03T09:14:14.633Z","url":"/api/prescriptions"}
 {"time":"2026-09-03T09:23:55.289Z","url":"/api/prescriptions"}
+{"time":"2026-09-03T10:42:17.704Z","url":"/api/cart/items","body":{"product_id":20,"quantity":1}}
+{"time":"2026-09-03T10:42:17.727Z","url":"/api/cart/items","body":{"product_id":20,"quantity":1}}
+{"time":"2026-09-03T10:42:33.414Z","url":"/api/coupons/validate","body":{"code":"AGE30H","cartTotal":1300}}
+{"time":"2026-09-03T10:42:38.784Z","url":"/api/orders","body":{"orderId":"HC-216583","ordered_date":"2026-09-03T10:42:38.778Z","orderItems":[{"product_id":20,"quantity":1,"product_name":"montana30h","small_description":"Healthcare product","product_description":"","category":"Baby Care","price":1300,"package_size":"Standard","potency":null,"composition":null,"dosage":"Follow the directions of your registered homeopathic physician.","status":"Pending"}],"address_id":"1","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":900,"couponCode":"AGE30H"}}
+{"time":"2026-09-03T11:45:47.451Z","url":"/api/prescriptions"}
+{"time":"2026-09-03T12:04:28.093Z","url":"/api/wishlist","body":{"product_id":"20"}}
+{"time":"2026-09-03T12:04:31.229Z","url":"/api/wishlist","body":{"product_id":"20"}}
+{"time":"2026-09-03T12:05:49.057Z","url":"/api/cart/items","body":{"product_id":20,"quantity":1}}
+{"time":"2026-09-03T12:10:36.138Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-03T12:10:36.198Z","url":"/api/cart/items","body":{"product_id":17,"quantity":1}}
+{"time":"2026-09-03T12:10:46.862Z","url":"/api/orders","body":{"orderId":"HC-232397","ordered_date":"2026-09-03T12:10:46.849Z","orderItems":[{"product_id":17,"quantity":1,"product_name":"arnicaa","small_description":"Healthcare product","product_description":"","category":"Homeopathy","price":1200,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"},{"product_id":20,"quantity":1,"product_name":"montana30h","small_description":"Healthcare product","product_description":"","category":"Homeopathy","price":1300,"package_size":"Standard","potency":null,"composition":null,"dosage":null,"status":"Pending"}],"address_id":"1","paymentMethod":"cod","customer_name":"Alekya Sunkari","phone_number":"07569363718","total_amount":2500}}

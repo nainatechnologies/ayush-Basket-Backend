@@ -308,7 +308,11 @@ const getAllAdminOrders = async (statusFilter) => {
         transactionId: orderObj.transactionId || ""
       },
       items: formattedItems,
-      product: formattedItems.length > 0 ? formattedItems[0] : { name: "", shortDesc: "", category: "", price: 0, qty: 0 }
+      product: formattedItems.length > 0 ? {
+        ...formattedItems[0],
+        name: formattedItems.length > 1 ? `${formattedItems[0].name} (+${formattedItems.length - 1} more items)` : formattedItems[0].name,
+        qty: formattedItems.reduce((acc, curr) => acc + curr.qty, 0)
+      } : { name: "", shortDesc: "", category: "", price: 0, qty: 0 }
     };
   });
 

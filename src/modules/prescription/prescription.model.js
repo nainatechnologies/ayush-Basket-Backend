@@ -21,6 +21,9 @@ const Prescription = sequelize.define('Prescription', {
     type: DataTypes.STRING(255),
     field: 'patient_name'
   },
+  address: {
+    type: DataTypes.TEXT
+  },
   doctor_name: {
     type: DataTypes.STRING(255),
     field: 'doctor_name'

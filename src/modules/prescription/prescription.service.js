@@ -20,6 +20,7 @@ const uploadNewPrescription = async (userId, data, fileUrl) => {
     medicines: data.medicines || '',
     patient_name: data.patient_name || data.patientName || '',
     doctor_name: data.doctor_name || data.doctorName || '',
+    address: data.address || '',
     status: 'pending'
   });
 };

@@ -1,5 +1,12 @@
 const { WishlistItem, Product } = require('../../models');
 
+const formatImageUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const getWishlistForUser = async (userId) => {
   const items = await WishlistItem.findAll({
     where: { userId },
@@ -16,7 +23,7 @@ const getWishlistForUser = async (userId) => {
     name: i.product.name,
     price: i.product.price,
     offerPrice: i.product.offerPrice,
-    image_url: i.product.imageUrl,
+    image_url: formatImageUrl(i.product.imageUrl),
     stock: i.product.stock
   }));
 };
@@ -28,7 +35,8 @@ const addItemToWishlist = async (userId, productId) => {
     error.statusCode = 400;
     throw error;
   }
-  await WishlistItem.create({ userId, productId });
+  const newItem = await WishlistItem.create({ userId, productId });
+  return newItem;
 };
 
 const removeItemFromWishlist = async (userId, id) => {

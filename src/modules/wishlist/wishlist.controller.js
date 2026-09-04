@@ -18,8 +18,8 @@ const getWishlist = async (req, res) => {
 // @access  Private
 const addToWishlist = async (req, res) => {
   try {
-    await wishlistService.addItemToWishlist(req.user.id, req.body.product_id);
-    res.status(201).json({ success: true, message: 'Added to wishlist' });
+    const item = await wishlistService.addItemToWishlist(req.user.id, req.body.product_id);
+    res.status(201).json({ success: true, message: 'Added to wishlist', data: item });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
     console.error('Error adding to wishlist:', error);
