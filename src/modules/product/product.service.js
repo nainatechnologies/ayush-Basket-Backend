@@ -46,12 +46,13 @@ const getCustomerProducts = async (filters) => {
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
     
-    // Format all image URLs to include the backend host
-    prod.imageUrl = formatImageUrl(prod.imageUrl);
-    prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
-    prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+    prod.imageUrl = prod.imageUrl;
+    prod.imageUrl2 = prod.imageUrl2;
+    prod.imageUrl3 = prod.imageUrl3;
     
-    prod.image = prod.imageUrl;
+    prod.imageBase64 = prod.imageUrl;
+    prod.imageMimeType = prod.imageMimeType;
+    prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     
     // Add aliases for frontend compatibility
@@ -110,12 +111,13 @@ const getAdminProductsList = async (filters) => {
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
     
-    // Format all image URLs to include the backend host
-    prod.imageUrl = formatImageUrl(prod.imageUrl);
-    prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
-    prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+    prod.imageUrl = prod.imageUrl;
+    prod.imageUrl2 = prod.imageUrl2;
+    prod.imageUrl3 = prod.imageUrl3;
     
-    prod.image = prod.imageUrl;
+    prod.imageBase64 = prod.imageUrl;
+    prod.imageMimeType = prod.imageMimeType;
+    prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     
     // Add aliases for frontend compatibility
@@ -152,11 +154,13 @@ const getProductDetails = async (id) => {
   const prod = product.toJSON();
   prod.category_name = prod.category ? prod.category.name : null;
   
-  prod.imageUrl = formatImageUrl(prod.imageUrl);
-  prod.imageUrl2 = formatImageUrl(prod.imageUrl2);
-  prod.imageUrl3 = formatImageUrl(prod.imageUrl3);
+  prod.imageUrl = prod.imageUrl;
+  prod.imageUrl2 = prod.imageUrl2;
+  prod.imageUrl3 = prod.imageUrl3;
   
-  prod.image = prod.imageUrl;
+  prod.imageBase64 = prod.imageUrl;
+  prod.imageMimeType = prod.imageMimeType;
+  prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
   prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
 
   // Add aliases for frontend compatibility
@@ -213,9 +217,12 @@ const createNewProduct = async (data, images) => {
       stock: parseInt(data.stock, 10),
       categoryId: actual_category_id,
       status: data.status || 'active',
-      imageUrl: images.img1 || null,
-      imageUrl2: images.img2 || null,
-      imageUrl3: images.img3 || null,
+      imageUrl: images.img1 ? images.img1.base64 : null,
+      imageMimeType: images.img1 ? images.img1.mimeType : null,
+      imageUrl2: images.img2 ? images.img2.base64 : null,
+      image2MimeType: images.img2 ? images.img2.mimeType : null,
+      imageUrl3: images.img3 ? images.img3.base64 : null,
+      image3MimeType: images.img3 ? images.img3.mimeType : null,
       packageSize: data.package_size || null,
       potency: data.potency || null,
       composition: data.composition || null,
@@ -273,9 +280,18 @@ const updateExistingProduct = async (id, data, images) => {
       prod.status = data.status !== undefined ? data.status : prod.status;
     }
 
-    if (images.img1) prod.imageUrl = images.img1;
-    if (images.img2 !== undefined) prod.imageUrl2 = images.img2;
-    if (images.img3 !== undefined) prod.imageUrl3 = images.img3;
+    if (images.img1) {
+      prod.imageUrl = images.img1.base64;
+      prod.imageMimeType = images.img1.mimeType;
+    }
+    if (images.img2 !== null) {
+      prod.imageUrl2 = images.img2 ? images.img2.base64 : null;
+      prod.image2MimeType = images.img2 ? images.img2.mimeType : null;
+    }
+    if (images.img3 !== null) {
+      prod.imageUrl3 = images.img3 ? images.img3.base64 : null;
+      prod.image3MimeType = images.img3 ? images.img3.mimeType : null;
+    }
 
     const actualPackSize = data.packageSize !== undefined ? data.packageSize : (data.packSize !== undefined ? data.packSize : data.package_size);
     prod.packageSize = actualPackSize !== undefined ? actualPackSize : prod.packageSize;

@@ -6,9 +6,19 @@ const smsService = require('../../services/smsService');
 // @access  Private (Customer)
 const uploadPrescription = async (req, res) => {
   try {
-    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    const prescription = await prescriptionService.uploadNewPrescription(req.user.id, req.body || {}, fileUrl);
+    let imageObj = null;
+    if (req.file && req.file.buffer) {
+      imageObj = {
+        mimeType: req.file.mimetype,
+        base64: req.file.buffer.toString('base64')
+      };
+    } else if (req.body.image_url) {
+      const { extractBase64AndMimeType } = require('../../utils/imageUtils');
+      imageObj = extractBase64AndMimeType(req.body.image_url);
+    }
     
+    const prescription = await prescriptionService.uploadNewPrescription(req.user.id, req.body || {}, imageObj);
+
     // Trigger SMS notification
     const userPhone = req.body.phone || req.user.phone;
     if (userPhone) {
@@ -16,7 +26,7 @@ const uploadPrescription = async (req, res) => {
         console.error('Failed to send prescription SMS:', err.message);
       });
     }
-    
+
     res.status(201).json({
       success: true,
       message: 'Prescription uploaded successfully. Our team will review it shortly.',
@@ -62,7 +72,7 @@ const approvePrescription = async (req, res) => {
   try {
     const { items, address_id } = req.body;
     const orderId = await prescriptionService.approveAndCreateOrder(req.params.id, req.user.id, items, address_id);
-    
+
     res.status(200).json({
       success: true,
       message: 'Prescription approved and order created.',
@@ -103,11 +113,11 @@ const getPrescriptionById = async (req, res) => {
   }
 };
 
-module.exports = { 
-  uploadPrescription, 
-  getMyPrescriptions, 
+module.exports = {
+  uploadPrescription,
+  getMyPrescriptions,
   getAllPrescriptions,
-  getPrescriptionById, 
-  approvePrescription, 
-  rejectPrescription 
+  getPrescriptionById,
+  approvePrescription,
+  rejectPrescription
 };

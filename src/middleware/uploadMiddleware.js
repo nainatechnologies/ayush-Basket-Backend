@@ -9,16 +9,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Set storage engine
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'public/assets/uploads/');
-  },
-  filename: function (req, file, cb) {
-    // e.g. product-1681234567.jpg
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-  }
-});
+// Set storage engine to memory so we can convert files to Base64 directly
+const storage = multer.memoryStorage();
 
 // Check File Type
 function checkFileType(file, cb) {

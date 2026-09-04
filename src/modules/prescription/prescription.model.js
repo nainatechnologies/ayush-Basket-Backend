@@ -8,8 +8,13 @@ const Prescription = sequelize.define('Prescription', {
     field: 'user_id'
   },
   imageUrl: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT('long'),
     field: 'image_url'
+  },
+  imageMimeType: {
+    type: DataTypes.STRING,
+    field: 'image_mime_type',
+    allowNull: true,
   },
   notes: {
     type: DataTypes.TEXT

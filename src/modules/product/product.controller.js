@@ -1,9 +1,12 @@
 const productService = require('./product.service');
-const { processBase64Image } = require('../../utils/imageUtils');
+const { extractBase64AndMimeType } = require('../../utils/imageUtils');
 
 const getImageUrlFromFile = (file) => {
-  if (!file || !file.filename) return null;
-  return `/uploads/${file.filename}`;
+  if (!file || !file.buffer) return null;
+  return {
+    mimeType: file.mimetype,
+    base64: file.buffer.toString('base64')
+  };
 };
 
 // @desc    Get all products (CUSTOMER — never returns hidden products)
@@ -41,7 +44,7 @@ const getProductById = async (req, res) => {
     res.status(200).json({ success: true, data: product });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
-    
+
     try {
       // Fallback
       const fallbackProduct = await productService.getProductById(req.params.id);
@@ -59,15 +62,15 @@ const getProductById = async (req, res) => {
 // @access  Private/Admin
 const createProduct = async (req, res) => {
   try {
-    let img1 = processBase64Image(req.body.image_url || req.body.image || req.body.imageUrl) || '';
-    let img2 = processBase64Image(req.body.image_url2 || req.body.imageUrl2) || null;
-    let img3 = processBase64Image(req.body.image_url3 || req.body.imageUrl3) || null;
+    let img1 = extractBase64AndMimeType(req.body.image_url || req.body.image || req.body.imageUrl) || null;
+    let img2 = extractBase64AndMimeType(req.body.image_url2 || req.body.imageUrl2) || null;
+    let img3 = extractBase64AndMimeType(req.body.image_url3 || req.body.imageUrl3) || null;
 
     if (req.body.imageUrls) {
       const urls = req.body.imageUrls.split(',').map(u => u.trim()).filter(Boolean);
-      if (urls[0]) img1 = processBase64Image(urls[0]);
-      if (urls[1]) img2 = processBase64Image(urls[1]);
-      if (urls[2]) img3 = processBase64Image(urls[2]);
+      if (urls[0]) img1 = extractBase64AndMimeType(urls[0]);
+      if (urls[1]) img2 = extractBase64AndMimeType(urls[1]);
+      if (urls[2]) img3 = extractBase64AndMimeType(urls[2]);
     }
 
     if (req.files && req.files.length > 0) {
@@ -98,9 +101,9 @@ const createProduct = async (req, res) => {
 // @access  Private/Admin
 const updateProduct = async (req, res) => {
   try {
-    let img1 = processBase64Image(req.body.image_url || req.body.image || req.body.imageUrl) || '';
-    let img2 = processBase64Image(req.body.image_url2 || req.body.imageUrl2) || undefined;
-    let img3 = processBase64Image(req.body.image_url3 || req.body.imageUrl3) || undefined;
+    let img1 = extractBase64AndMimeType(req.body.image_url || req.body.image || req.body.imageUrl) || null;
+    let img2 = extractBase64AndMimeType(req.body.image_url2 || req.body.imageUrl2) || null;
+    let img3 = extractBase64AndMimeType(req.body.image_url3 || req.body.imageUrl3) || null;
 
     if (req.files && req.files.length > 0) {
       const imageFiles = req.files.filter(f => f.fieldname === 'image');

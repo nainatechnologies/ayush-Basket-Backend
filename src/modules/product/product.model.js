@@ -58,14 +58,29 @@ const Product = sequelize.define('Product', {
     field: 'image_url',
     allowNull: true,
   },
+  imageMimeType: {
+    type: DataTypes.STRING,
+    field: 'image_mime_type',
+    allowNull: true,
+  },
   imageUrl2: {
     type: DataTypes.TEXT('long'),
     field: 'image_url2',
     allowNull: true,
   },
+  image2MimeType: {
+    type: DataTypes.STRING,
+    field: 'image2_mime_type',
+    allowNull: true,
+  },
   imageUrl3: {
     type: DataTypes.TEXT('long'),
     field: 'image_url3',
+    allowNull: true,
+  },
+  image3MimeType: {
+    type: DataTypes.STRING,
+    field: 'image3_mime_type',
     allowNull: true,
   },
   packageSize: {

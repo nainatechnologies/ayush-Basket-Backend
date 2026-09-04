@@ -1,21 +1,17 @@
 const { Prescription, User, Product, Order, OrderItem, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
-const uploadNewPrescription = async (userId, data, fileUrl) => {
-  let imageUrl = data.image_url || '';
-  if (fileUrl) {
-    imageUrl = fileUrl;
-  }
-
-  if (!imageUrl) {
-    const error = new Error('Prescription image is required.');
+const uploadNewPrescription = async (userId, data, imageObj) => {
+  if (!imageObj || !imageObj.base64) {
+    const error = new Error('Prescription image is required or invalid format.');
     error.statusCode = 400;
     throw error;
   }
 
   return await Prescription.create({
     userId: userId,
-    imageUrl: imageUrl,
+    imageUrl: imageObj.base64,
+    imageMimeType: imageObj.mimeType || 'image/jpeg',
     notes: data.notes || '',
     medicines: data.medicines || '',
     patient_name: data.patient_name || data.patientName || '',
@@ -58,6 +54,12 @@ const getAllPrescriptionsList = async (filters) => {
         pres.user_name = pres.user.name;
       }
     }
+    
+    pres.imageBase64 = pres.imageUrl;
+    pres.imageMimeType = pres.imageMimeType || 'image/jpeg';
+    pres.image_url = pres.imageUrl ? `data:${pres.imageMimeType};base64,${pres.imageUrl}` : null;
+    pres.imageUrl = pres.image_url;
+    
     return pres;
   });
 };
@@ -86,6 +88,12 @@ const getPrescriptionDetails = async (id) => {
       pres.user_name = pres.user.name;
     }
   }
+
+  pres.imageBase64 = pres.imageUrl;
+  pres.imageMimeType = pres.imageMimeType || 'image/jpeg';
+  pres.image_url = pres.imageUrl ? `data:${pres.imageMimeType};base64,${pres.imageUrl}` : null;
+  pres.imageUrl = pres.image_url;
+
   return pres;
 };
 
