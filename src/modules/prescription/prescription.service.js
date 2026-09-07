@@ -1,6 +1,19 @@
 const { Prescription, User, Product, Order, OrderItem, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
+const formatImageUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const buildImageSource = (url, mimeType) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('/uploads/')) return formatImageUrl(url);
+  return `data:${mimeType || 'image/jpeg'};base64,${url}`;
+};
+
 const uploadNewPrescription = async (userId, data, imageObj) => {
   if (!imageObj || !imageObj.base64) {
     const error = new Error('Prescription image is required or invalid format.');
@@ -22,9 +35,19 @@ const uploadNewPrescription = async (userId, data, imageObj) => {
 };
 
 const getPrescriptionsForUser = async (userId) => {
-  return await Prescription.findAll({
+  const prescriptions = await Prescription.findAll({
     where: { userId },
     order: [['created_at', 'DESC']]
+  });
+
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+
+  return prescriptions.map(p => {
+    const pres = p.toJSON();
+    pres.image_url = pres.imageUrl ? `${baseUrl}/api/prescriptions/${pres.id}/image` : null;
+    pres.imageUrl = pres.image_url;
+    delete pres.imageBase64;
+    return pres;
   });
 };
 
@@ -47,19 +70,19 @@ const getAllPrescriptionsList = async (filters) => {
     if (pres.user) {
       if (pres.user.phone) {
         pres.patient_phone = pres.user.phone;
-        pres.user_phone = pres.user.phone; 
+        pres.user_phone = pres.user.phone;
       }
       if (pres.user.name && !pres.patient_name) {
         pres.patient_name = pres.user.name;
         pres.user_name = pres.user.name;
       }
     }
-    
+
     pres.imageBase64 = pres.imageUrl;
     pres.imageMimeType = pres.imageMimeType || 'image/jpeg';
-    pres.image_url = pres.imageUrl ? `data:${pres.imageMimeType};base64,${pres.imageUrl}` : null;
+    pres.image_url = buildImageSource(pres.imageUrl, pres.imageMimeType);
     pres.imageUrl = pres.image_url;
-    
+
     return pres;
   });
 };
@@ -76,12 +99,12 @@ const getPrescriptionDetails = async (id) => {
     error.statusCode = 404;
     throw error;
   }
-  
+
   const pres = prescription.toJSON();
   if (pres.user) {
     if (pres.user.phone) {
       pres.patient_phone = pres.user.phone;
-      pres.user_phone = pres.user.phone; 
+      pres.user_phone = pres.user.phone;
     }
     if (pres.user.name && !pres.patient_name) {
       pres.patient_name = pres.user.name;
@@ -91,7 +114,7 @@ const getPrescriptionDetails = async (id) => {
 
   pres.imageBase64 = pres.imageUrl;
   pres.imageMimeType = pres.imageMimeType || 'image/jpeg';
-  pres.image_url = pres.imageUrl ? `data:${pres.imageMimeType};base64,${pres.imageUrl}` : null;
+  pres.image_url = buildImageSource(pres.imageUrl, pres.imageMimeType);
   pres.imageUrl = pres.image_url;
 
   return pres;
@@ -102,7 +125,7 @@ const approveAndCreateOrder = async (prescriptionId, adminId, items, addressId) 
 
   try {
     const prescription = await Prescription.findByPk(prescriptionId, { transaction: t });
-    
+
     if (!prescription) {
       throw new Error('Prescription not found.');
     }
@@ -116,8 +139,8 @@ const approveAndCreateOrder = async (prescriptionId, adminId, items, addressId) 
 
     for (const item of items) {
       const product = await Product.findOne({
-        where: { 
-          id: item.product_id, 
+        where: {
+          id: item.product_id,
           status: { [Op.notIn]: ['hidden', 'Inactive'] }
         },
         lock: t.LOCK.UPDATE,
@@ -134,10 +157,10 @@ const approveAndCreateOrder = async (prescriptionId, adminId, items, addressId) 
 
       const price = product.offerPrice ? parseFloat(product.offerPrice) : parseFloat(product.price);
       totalAmount += price * item.quantity;
-      
-      validatedItems.push({ 
-        product_id: product.id, 
-        quantity: item.quantity, 
+
+      validatedItems.push({
+        product_id: product.id,
+        quantity: item.quantity,
         price,
         purchasePrice: product.costPrice || 0
       });
@@ -186,7 +209,7 @@ const approveAndCreateOrder = async (prescriptionId, adminId, items, addressId) 
 
 const rejectExistingPrescription = async (id) => {
   const prescription = await Prescription.findByPk(id);
-  
+
   if (!prescription) {
     const error = new Error('Prescription not found.');
     error.statusCode = 404;

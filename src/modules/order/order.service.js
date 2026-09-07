@@ -22,7 +22,7 @@ const createOrder = async (userId, data) => {
     for (let i = 0; i < orderItems.length; i++) {
       const item = orderItems[i];
       const product = await Product.findByPk(item.product_id, { transaction: t, lock: t.LOCK.UPDATE });
-      
+
       if (!product) {
         throw new Error(`Product ID ${item.product_id} not found`);
       }
@@ -33,7 +33,7 @@ const createOrder = async (userId, data) => {
 
       const itemPrice = product.offerPrice ? parseFloat(product.offerPrice) : parseFloat(product.price);
       totalAmount += itemPrice * item.quantity;
-      
+
       verifiedItems.push({
         productId: product.id,
         quantity: item.quantity,
@@ -72,18 +72,20 @@ const createOrder = async (userId, data) => {
 
     for (const item of verifiedItems) {
       await OrderItem.create({
-        orderId: order.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: item.price,
-        purchasePrice: item.purchasePrice
-      }, { transaction: t });
+          orderId: order.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          purchasePrice: item.purchasePrice,
+          productName: product.name,
+          productImage: product.imageUrl || product.image_url || product.image || null
+        }, { transaction: t });
     }
 
     await t.commit();
 
     console.log(`\n=========================================\nOrdered placed by Customer: User ID ${userId}, Order ID: ${order.id}\n=========================================\n`);
-    
+
     // Send SMS for Order Placed
     if (address && address.phone) {
       smsService.sendOrderPlacedSMS(order, address.phone);
@@ -102,7 +104,7 @@ const createOrder = async (userId, data) => {
 const formatOrderImages = (order) => {
   const orderObj = order.toJSON();
   const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-  
+
   if (orderObj.items) {
     orderObj.items = orderObj.items.map(item => {
       const p = item.product;
@@ -114,7 +116,7 @@ const formatOrderImages = (order) => {
         p.imageUrl = finalImg;
         p.image_url = finalImg;
         p.image = finalImg;
-        
+
         item.imageUrl = finalImg;
         item.image_url = finalImg;
         item.image = finalImg;
@@ -146,12 +148,12 @@ const getOrderDetails = async (orderId, userId, role) => {
     include: [
       { model: User, as: 'user', attributes: ['name', 'email', 'phone'] },
       { model: Address, as: 'address' },
-      { 
-        model: OrderItem, 
+      {
+        model: OrderItem,
         as: 'items',
         include: [
-          { 
-            model: Product, 
+          {
+            model: Product,
             as: 'product',
             include: [{ model: Category, as: 'category' }]
           }
@@ -179,7 +181,7 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
   const order = await Order.findByPk(orderId, {
     include: [{ model: Address, as: 'address' }]
   });
-  
+
   if (!order) {
     const error = new Error('Order not found');
     error.statusCode = 404;
@@ -188,7 +190,7 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
 
   const prevStatus = (order.status || '').toLowerCase();
   order.status = status;
-  
+
   if (status.toLowerCase() === 'completed') {
     order.paymentStatus = 'paid';
     await revenueService.logOrderRevenue(orderId).catch(err => console.error('Error logging revenue:', err));
@@ -206,7 +208,7 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
   // Send SMS on specific status updates
   if (order.address && order.address.phone) {
     const s = status.toLowerCase();
-    
+
     if (s === 'accepted' || s === 'confirmed') {
       smsService.sendOrderAcceptedSMS(order, order.address.phone);
     } else if (s === 'completed') {
@@ -219,38 +221,38 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
 
 const cancelCustomerOrder = async (orderId, userId) => {
   const order = await Order.findOne({ where: { id: orderId, userId } });
-  
+
   if (!order) {
     const error = new Error('Order not found or unauthorized');
     error.statusCode = 404;
     throw error;
   }
-  
+
   const s = order.status.toLowerCase();
   if (s === "out_for_delivery" || s === "completed" || s === "cancelled") {
     const error = new Error('Order cannot be cancelled at this stage');
     error.statusCode = 400;
     throw error;
   }
-  
+
   order.status = 'cancelled';
   await order.save();
 };
 
 const getAllAdminOrders = async (statusFilter) => {
   console.log(`\n=========================================\nOrder received by Admin\n=========================================\n`);
-  
+
   const orders = await Order.findAll({
     order: [['created_at', 'DESC']],
     include: [
       { model: User, as: 'user', attributes: ['name', 'phone'] },
       { model: Address, as: 'address' },
-      { 
-        model: OrderItem, 
+      {
+        model: OrderItem,
         as: 'items',
         include: [
-          { 
-            model: Product, 
+          {
+            model: Product,
             as: 'product',
             include: [{ model: Category, as: 'category' }]
           }
@@ -261,12 +263,12 @@ const getAllAdminOrders = async (statusFilter) => {
 
   const formattedOrders = orders.map(order => {
     const orderObj = order.toJSON();
-    
+
     const formattedItems = (orderObj.items || []).map(item => {
-      const product = item.product || {};
-      return {
-        product_id: item.productId,
-        name: product.name,
+        const product = item.product || {};
+        return {
+          product_id: item.productId,
+          name: product.name || item.productName || 'Unknown Product',
         shortDesc: product.description ? product.description.substring(0, 50) + '...' : '',
         fullDesc: product.fullDescription || product.description || '',
         category: product.category ? product.category.name : '',
@@ -274,8 +276,8 @@ const getAllAdminOrders = async (statusFilter) => {
         qty: item.quantity,
         packageSize: product.packageSize || '-',
         potency: product.potency || '-',
-        imageUrl: product.image_url,
-        image: product.image_url ? 'http://localhost:5000' + product.image_url : null
+        imageUrl: product.image_url || item.productImage,
+          image: (product.image_url || item.productImage) ? ('http://localhost:5000' + (product.image_url || item.productImage).replace('http://localhost:5000', '')) : null
       };
     });
 
@@ -298,8 +300,8 @@ const getAllAdminOrders = async (statusFilter) => {
       customer: {
         name: orderObj.user ? orderObj.user.name : "",
         phone: (orderObj.address && orderObj.address.phone) ? orderObj.address.phone : (orderObj.user && orderObj.user.phone ? orderObj.user.phone : ""),
-        address: orderObj.address && orderObj.address.street ? 
-          `${orderObj.address.street}, ${orderObj.address.city}, ${orderObj.address.state} - ${orderObj.address.pincode}` : 
+        address: orderObj.address && orderObj.address.street ?
+          `${orderObj.address.street}, ${orderObj.address.city}, ${orderObj.address.state} - ${orderObj.address.pincode}` :
           ""
       },
       payment: {
@@ -325,7 +327,7 @@ const getAllAdminOrders = async (statusFilter) => {
 
   const formattedPrescriptions = prescriptions.map(presc => {
     const prescObj = presc.toJSON();
-    
+
     let rawPrescStatus = (prescObj.status || 'pending').toLowerCase();
     let mappedStatus;
     if (rawPrescStatus === 'pending') mappedStatus = 'Received';
@@ -351,12 +353,12 @@ const getAllAdminOrders = async (statusFilter) => {
         transactionId: ""
       },
       items: [],
-      product: { 
-        name: "Prescription", 
-        shortDesc: prescObj.notes || "", 
-        category: "Prescription", 
-        price: 0, 
-        qty: 0 
+      product: {
+        name: "Prescription",
+        shortDesc: prescObj.notes || "",
+        category: "Prescription",
+        price: 0,
+        qty: 0
       }
     };
   });
@@ -380,11 +382,34 @@ const getAllAdminOrders = async (statusFilter) => {
   return finalOrders;
 };
 
+
+const deleteOrderById = async (orderId) => {
+  const order = await Order.findByPk(orderId);
+  if (!order) {
+    const error = new Error('Order not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  
+  // Delete all related records to prevent foreign key constraint errors
+  await OrderItem.destroy({ where: { orderId } });
+  await OrderStatusHistory.destroy({ where: { orderId } });
+  
+  // Need to require OrderNotification and Prescription locally if not at top
+  const { OrderNotification } = require('../../models');
+  await OrderNotification.destroy({ where: { orderId } });
+  
+  await Prescription.update({ orderId: null, status: 'pending' }, { where: { orderId } });
+
+  await order.destroy();
+};
+
 module.exports = {
   createOrder,
   getCustomerOrders,
   getOrderDetails,
   updateOrderStatus,
   cancelCustomerOrder,
-  getAllAdminOrders
+  getAllAdminOrders,
+  deleteOrderById
 };

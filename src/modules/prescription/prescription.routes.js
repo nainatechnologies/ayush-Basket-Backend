@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   uploadPrescription, getMyPrescriptions,
-  getAllPrescriptions, getPrescriptionById, approvePrescription, rejectPrescription
+  getAllPrescriptions, getPrescriptionById, approvePrescription, rejectPrescription, servePrescriptionImage
 } = require('./prescription.controller');
 const { protect, admin } = require('../../middleware/authMiddleware');
 const upload = require('../../middleware/uploadMiddleware');
@@ -13,6 +13,10 @@ const { uploadPrescriptionSchema, approvePrescriptionSchema } = require('./presc
 // Customer routes
 router.post('/', protect, upload.single('prescription'), validate(uploadPrescriptionSchema), uploadPrescription);
 router.get('/my', protect, getMyPrescriptions);
+
+// Public image routes (so frontend <img> tags work without tokens)
+router.get('/:id/image', servePrescriptionImage);
+router.get('/admin/:id/image', servePrescriptionImage);
 
 // Admin routes
 router.get('/admin', protect, admin, getAllPrescriptions);

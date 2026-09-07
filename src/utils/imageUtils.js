@@ -9,6 +9,11 @@ const path = require('path');
 const extractBase64AndMimeType = (input) => {
   if (!input || typeof input !== 'string') return null;
   
+  // If it's a normal web URL, just return it
+  if (input.startsWith('http://') || input.startsWith('https://') || input.startsWith('/uploads/')) {
+    return { isUrl: true, url: input };
+  }
+  
   // If it's a full Data URI (data:image/jpeg;base64,/9j/4AAQSkZJ...)
   if (input.startsWith('data:')) {
     const parts = input.split(',');
@@ -20,8 +25,14 @@ const extractBase64AndMimeType = (input) => {
     const mimeMatch = meta.match(/data:([^;]+);base64/);
     if (!mimeMatch || !mimeMatch[1]) return null;
     
-    // Quick validation of base64
-    if (!/^[a-zA-Z0-9+/=]+$/.test(base64Data)) return null;
+    // Ensure the base64 data is not empty
+    if (!base64Data || base64Data.trim() === '') return null;
+
+    // Validate base64 characters (faster and prevents ReDoS compared to ^...+$ on huge strings)
+    if (/[^a-zA-Z0-9+/=]/.test(base64Data)) return null;
+    
+    // Basic size check to prevent memory issues (e.g., > 10MB Base64 string)
+    if (base64Data.length > 15 * 1024 * 1024) return null;
     
     return { mimeType: mimeMatch[1], base64: base64Data };
   }
@@ -30,7 +41,7 @@ const extractBase64AndMimeType = (input) => {
   // The requirements say "Add validation for empty, malformed, truncated, and unsupported Base64 values."
   // If no MIME is provided, we can default to 'image/jpeg' or return null.
   // For safety, let's assume if they pass raw base64, we default to image/jpeg.
-  if (/^[a-zA-Z0-9+/=]+$/.test(input)) {
+  if (input && input.trim() !== '' && !/[^a-zA-Z0-9+/=]/.test(input) && input.length <= 15 * 1024 * 1024) {
       return { mimeType: 'image/jpeg', base64: input };
   }
 

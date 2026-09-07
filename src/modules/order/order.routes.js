@@ -24,7 +24,8 @@ router.route('/myorders')
 
 // GET    /api/orders/:id       — get a single order (customer sees own, admin sees all)
 router.route('/:id')
-  .get(protect, getOrderById);
+  .get(protect, getOrderById)
+  .delete(protect, admin, require('./order.controller').deleteOrder);
 
 // GET    /api/orders/:id/invoice — download order tax invoice
 router.route('/:id/invoice')

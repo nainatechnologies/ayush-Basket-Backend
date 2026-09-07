@@ -7,25 +7,36 @@ const formatImageUrl = (url) => {
   return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const buildImageSource = (url, mimeType) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('/uploads/')) return formatImageUrl(url);
+  return `data:${mimeType || 'image/jpeg'};base64,${url}`;
+};
+
 const getWishlistForUser = async (userId) => {
   const items = await WishlistItem.findAll({
     where: { userId },
     include: [{
       model: Product,
       as: 'product',
-      attributes: ['id', 'name', 'price', 'offerPrice', 'imageUrl', 'stock', 'status']
+      attributes: ['id', 'name', 'price', 'offerPrice', 'imageUrl', 'imageMimeType', 'stock', 'status']
     }]
   });
   
-  return items.filter(i => i.product && i.product.status !== 'hidden').map(i => ({
-    id: i.id,
-    product_id: i.product.id,
-    name: i.product.name,
-    price: i.product.price,
-    offerPrice: i.product.offerPrice,
-    image_url: formatImageUrl(i.product.imageUrl),
-    stock: i.product.stock
-  }));
+  return items.filter(i => i.product && i.product.status !== 'hidden').map(i => {
+    const finalImageUrl = buildImageSource(i.product.imageUrl, i.product.imageMimeType);
+    return {
+      id: i.id,
+      product_id: i.product.id,
+      name: i.product.name,
+      price: i.product.price,
+      offerPrice: i.product.offerPrice,
+      image_url: finalImageUrl,
+      image: finalImageUrl,
+      imageUrl: finalImageUrl,
+      stock: i.product.stock
+    };
+  });
 };
 
 const addItemToWishlist = async (userId, productId) => {

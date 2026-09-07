@@ -1,5 +1,18 @@
 const { CartItem, Product } = require('../../models');
 
+const formatImageUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const buildImageSource = (url, mimeType) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('/uploads/')) return formatImageUrl(url);
+  return `data:${mimeType || 'image/jpeg'};base64,${url}`;
+};
+
 const getCartForUser = async (userId) => {
   const cartItems = await CartItem.findAll({
     where: { userId },
@@ -7,7 +20,7 @@ const getCartForUser = async (userId) => {
       {
         model: Product,
         as: 'product',
-        attributes: ['id', 'name', 'price', 'offerPrice', 'imageUrl', 'stock', 'status']
+        attributes: ['id', 'name', 'price', 'offerPrice', 'imageUrl', 'imageMimeType', 'stock', 'status']
       }
     ]
   });
@@ -26,12 +39,7 @@ const getCartForUser = async (userId) => {
 
       subtotal += priceToUse * safeQuantity;
       
-      const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-      
-      let finalImageUrl = product.imageUrl;
-      if (finalImageUrl && !finalImageUrl.startsWith('http')) {
-        finalImageUrl = baseUrl + (finalImageUrl.startsWith('/') ? '' : '/') + finalImageUrl;
-      }
+      const finalImageUrl = buildImageSource(product.imageUrl, product.imageMimeType);
       
       return {
         id: item.id,
@@ -41,6 +49,8 @@ const getCartForUser = async (userId) => {
         price: product.price,
         offerPrice: product.offerPrice,
         image_url: finalImageUrl,
+        image: finalImageUrl,
+        imageUrl: finalImageUrl,
         stock: product.stock
       };
     });

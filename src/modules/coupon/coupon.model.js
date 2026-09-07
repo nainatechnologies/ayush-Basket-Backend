@@ -22,6 +22,29 @@ const Coupon = sequelize.define('Coupon', {
     defaultValue: 0.00,
     field: 'min_order_amount'
   },
+  maxDiscount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    field: 'max_discount'
+  },
+  usageLimit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'usage_limit'
+  },
+  usedCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'used_count'
+  },
+  validFrom: {
+    type: DataTypes.DATE,
+    field: 'valid_from'
+  },
+  validUntil: {
+    type: DataTypes.DATE,
+    field: 'valid_until'
+  },
   expiryDate: {
     type: DataTypes.DATE,
     field: 'expiry_date'

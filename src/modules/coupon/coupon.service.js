@@ -12,13 +12,21 @@ const createNewCoupon = async (data) => {
     code: data.code.toUpperCase(),
     discountType: data.discountType,
     discountValue: data.discountValue,
-    minOrderAmount: data.minOrderAmount || 0,
+    minOrderAmount: data.minOrderAmount || data.minPurchase || 0,
     maxDiscount: data.maxDiscount || null,
-    validFrom: data.validFrom || new Date(),
-    validUntil: data.validUntil || null,
+    validFrom: data.validFrom || null,
+    validUntil: data.validUntil || data.expiryDate || null,
     usageLimit: data.usageLimit || null,
     usedCount: 0,
-    isActive: data.isActive !== undefined ? data.isActive : true
+    isActive: data.isActive !== undefined ? data.isActive : true,
+    tag: data.tag || null,
+    tagBg: data.tagBg || null,
+    title: data.title || null,
+    titleAccent: data.titleAccent || null,
+    subtitle: data.subtitle || null,
+    ctaLink: data.ctaLink || null,
+    image: data.image || null,
+    gradientBg: data.gradientBg || null
   });
 };
 

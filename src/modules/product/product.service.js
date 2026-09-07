@@ -1,4 +1,4 @@
-const { Product, Category } = require('../../models');
+const { Product, Category, WishlistItem, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 const formatImageUrl = (url) => {
@@ -8,7 +8,13 @@ const formatImageUrl = (url) => {
   return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const getCustomerProducts = async (filters) => {
+const buildImageSource = (url, mimeType) => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('/uploads/')) return formatImageUrl(url);
+  return `data:${mimeType || 'image/jpeg'};base64,${url}`;
+};
+
+const getCustomerProducts = async (filters, userId = null) => {
   const { search, category, stockStatus } = filters;
   let whereClause = { status: { [Op.notIn]: ['hidden', 'Inactive', 'inactive'] } };
 
@@ -41,18 +47,28 @@ const getCustomerProducts = async (filters) => {
     order: [['created_at', 'DESC']]
   });
 
+  let userWishlistIds = new Set();
+  if (userId) {
+    const wishlistItems = await WishlistItem.findAll({ where: { userId } });
+    userWishlistIds = new Set(wishlistItems.map(item => item.productId));
+  }
+
   return products.map(p => {
     const prod = p.toJSON();
+    prod.isWishlisted = userWishlistIds.has(prod.id);
+    prod.is_wishlisted = prod.isWishlisted;
+    prod.in_wishlist = prod.isWishlisted;
+    
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
     
-    prod.imageUrl = prod.imageUrl;
-    prod.imageUrl2 = prod.imageUrl2;
-    prod.imageUrl3 = prod.imageUrl3;
+    prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
+    prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
+    prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
     
     prod.imageBase64 = prod.imageUrl;
     prod.imageMimeType = prod.imageMimeType;
-    prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
+    prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     
     // Add aliases for frontend compatibility
@@ -111,13 +127,13 @@ const getAdminProductsList = async (filters) => {
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
     
-    prod.imageUrl = prod.imageUrl;
-    prod.imageUrl2 = prod.imageUrl2;
-    prod.imageUrl3 = prod.imageUrl3;
+    prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
+    prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
+    prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
     
     prod.imageBase64 = prod.imageUrl;
     prod.imageMimeType = prod.imageMimeType;
-    prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
+    prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     
     // Add aliases for frontend compatibility
@@ -140,7 +156,7 @@ const getAdminProductsList = async (filters) => {
   });
 };
 
-const getProductDetails = async (id) => {
+const getProductDetails = async (id, userId = null) => {
   const product = await Product.findByPk(id, {
     include: [{ model: Category, as: 'category' }]
   });
@@ -151,16 +167,26 @@ const getProductDetails = async (id) => {
     throw error;
   }
 
+  let isWishlisted = false;
+  if (userId) {
+    const wishlistItem = await WishlistItem.findOne({ where: { userId, productId: id } });
+    if (wishlistItem) isWishlisted = true;
+  }
+
   const prod = product.toJSON();
+  prod.isWishlisted = isWishlisted;
+  prod.is_wishlisted = isWishlisted;
+  prod.in_wishlist = isWishlisted;
+  
   prod.category_name = prod.category ? prod.category.name : null;
   
-  prod.imageUrl = prod.imageUrl;
-  prod.imageUrl2 = prod.imageUrl2;
-  prod.imageUrl3 = prod.imageUrl3;
+  prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
+  prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
+  prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
   
   prod.imageBase64 = prod.imageUrl;
   prod.imageMimeType = prod.imageMimeType;
-  prod.image = prod.imageUrl ? `data:${prod.imageMimeType};base64,${prod.imageUrl}` : null;
+  prod.image = prod.imageUrl;
   prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
 
   // Add aliases for frontend compatibility
@@ -196,6 +222,7 @@ const resolveCategoryId = async (category_id) => {
 };
 
 const createNewProduct = async (data, images) => {
+  const transaction = await sequelize.transaction();
   try {
     const actual_category_id = await resolveCategoryId(data.category_id);
     const discountPct = parseFloat(data.discount_percentage) || 0;
@@ -217,11 +244,11 @@ const createNewProduct = async (data, images) => {
       stock: parseInt(data.stock, 10),
       categoryId: actual_category_id,
       status: data.status || 'active',
-      imageUrl: images.img1 ? images.img1.base64 : null,
+      imageUrl: images.img1 ? (images.img1.isUrl ? images.img1.url : images.img1.base64) : null,
       imageMimeType: images.img1 ? images.img1.mimeType : null,
-      imageUrl2: images.img2 ? images.img2.base64 : null,
+      imageUrl2: images.img2 ? (images.img2.isUrl ? images.img2.url : images.img2.base64) : null,
       image2MimeType: images.img2 ? images.img2.mimeType : null,
-      imageUrl3: images.img3 ? images.img3.base64 : null,
+      imageUrl3: images.img3 ? (images.img3.isUrl ? images.img3.url : images.img3.base64) : null,
       image3MimeType: images.img3 ? images.img3.mimeType : null,
       packageSize: data.package_size || null,
       potency: data.potency || null,
@@ -232,17 +259,21 @@ const createNewProduct = async (data, images) => {
       metaTitle: data.meta_title || null,
       metaDescription: data.meta_description || null,
       returnPolicy: data.returnPolicy || 'Easy Return',
-    });
+    }, { transaction });
+    
+    await transaction.commit();
     return product;
   } catch (err) {
+    await transaction.rollback();
     if (!err.statusCode) err.statusCode = 400;
     throw err;
   }
 };
 
 const updateExistingProduct = async (id, data, images) => {
+  const transaction = await sequelize.transaction();
   try {
-    const prod = await Product.findByPk(id);
+    const prod = await Product.findByPk(id, { transaction });
     if (!prod) {
       const error = new Error('Product not found.');
       error.statusCode = 404;
@@ -281,15 +312,15 @@ const updateExistingProduct = async (id, data, images) => {
     }
 
     if (images.img1) {
-      prod.imageUrl = images.img1.base64;
-      prod.imageMimeType = images.img1.mimeType;
+      prod.imageUrl = images.img1.isUrl ? images.img1.url : images.img1.base64;
+      prod.imageMimeType = images.img1.mimeType || null;
     }
     if (images.img2 !== null) {
-      prod.imageUrl2 = images.img2 ? images.img2.base64 : null;
+      prod.imageUrl2 = images.img2 ? (images.img2.isUrl ? images.img2.url : images.img2.base64) : null;
       prod.image2MimeType = images.img2 ? images.img2.mimeType : null;
     }
     if (images.img3 !== null) {
-      prod.imageUrl3 = images.img3 ? images.img3.base64 : null;
+      prod.imageUrl3 = images.img3 ? (images.img3.isUrl ? images.img3.url : images.img3.base64) : null;
       prod.image3MimeType = images.img3 ? images.img3.mimeType : null;
     }
 
@@ -307,13 +338,15 @@ const updateExistingProduct = async (id, data, images) => {
     prod.metaDescription = data.metaDescription !== undefined ? data.metaDescription : (data.meta_description !== undefined ? data.meta_description : prod.metaDescription);
     prod.returnPolicy = data.returnPolicy !== undefined ? data.returnPolicy : prod.returnPolicy;
 
-    await prod.save();
+    await prod.save({ transaction });
+    await transaction.commit();
 
     const updated = await Product.findByPk(id, { include: [{ model: Category, as: 'category' }] });
     const formatted = updated.toJSON();
     formatted.category_name = formatted.category ? formatted.category.name : null;
     return formatted;
   } catch (err) {
+    await transaction.rollback();
     if (!err.statusCode) err.statusCode = 400;
     throw err;
   }

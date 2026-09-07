@@ -1,5 +1,6 @@
 const productService = require('./product.service');
 const { extractBase64AndMimeType } = require('../../utils/imageUtils');
+const jwt = require('jsonwebtoken');
 
 const getImageUrlFromFile = (file) => {
   if (!file || !file.buffer) return null;
@@ -14,7 +15,17 @@ const getImageUrlFromFile = (file) => {
 // @access  Public
 const getProducts = async (req, res) => {
   try {
-    const formatted = await productService.getCustomerProducts(req.query);
+    let userId = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch (err) {
+        // Ignore invalid token for public route
+      }
+    }
+    const formatted = await productService.getCustomerProducts(req.query, userId);
     res.status(200).json({ success: true, count: formatted.length, data: formatted });
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -40,7 +51,17 @@ const getAdminProducts = async (req, res) => {
 // @access  Public
 const getProductById = async (req, res) => {
   try {
-    const product = await productService.getProductDetails(req.params.id);
+    let userId = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch (err) {
+        // Ignore invalid token
+      }
+    }
+    const product = await productService.getProductDetails(req.params.id, userId);
     res.status(200).json({ success: true, data: product });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });

@@ -49,7 +49,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true, // Necessary if you use cookies
 }));
-app.use(express.json({ limit: '50mb' })); // Increased slightly in case of very large Base64 images
+app.use(express.json({ 
+  limit: '50mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+})); // Increased slightly in case of very large Base64 images and capturing rawBody for webhooks
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
@@ -107,6 +112,7 @@ const revenueRoutes = require('./modules/revenue/revenue.routes');
 const wishlistRoutes = require('./modules/wishlist/wishlist.routes');
 const couponRoutes = require('./modules/coupon/coupon.routes');
 const reviewRoutes = require('./modules/review/review.routes');
+const paymentRoutes = require('./modules/payment/payment.routes');
 
 // ---------------------------------------------------------------------------
 // Mount Routes
@@ -126,6 +132,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ---------------------------------------------------------------------------
 // Static File Serving

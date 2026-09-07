@@ -20,6 +20,16 @@ const OrderItem = sequelize.define('OrderItem', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
+  productName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'product_name'
+  },
+  productImage: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'product_image'
+  },
   purchasePrice: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

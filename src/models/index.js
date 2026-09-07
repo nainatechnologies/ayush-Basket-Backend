@@ -17,6 +17,7 @@ const WishlistItem = require('../modules/wishlist/wishlistItem.model');
 const OrderStatusHistory = require('../modules/order/orderStatusHistory.model');
 const DailyRevenue = require('../modules/revenue/dailyRevenue.model');
 const OrderNotification = require('../modules/order/orderNotification.model');
+const PaymentAttempt = require('./PaymentAttempt.model');
 
 // Relationships
 
@@ -122,5 +123,6 @@ module.exports = {
   WishlistItem,
   OrderStatusHistory,
   DailyRevenue,
-  OrderNotification
+  OrderNotification,
+  PaymentAttempt
 };

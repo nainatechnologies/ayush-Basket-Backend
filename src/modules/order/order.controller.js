@@ -131,6 +131,18 @@ const uploadPaymentProof = async (req, res) => {
   }
 };
 
+const deleteOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    await orderService.deleteOrderById(orderId);
+    res.status(200).json({ success: true, message: 'Order deleted successfully' });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
+    console.error('Error deleting order:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting order' });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getMyOrders,
@@ -139,5 +151,6 @@ module.exports = {
   updateOrderStatus,
   cancelOrder,
   downloadInvoice,
-  uploadPaymentProof
+  uploadPaymentProof,
+  deleteOrder
 };
