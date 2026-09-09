@@ -30,6 +30,26 @@ const register = async (req, res) => {
   }
 };
 
+// @desc    Resend OTP for customer registration
+// @route   POST /api/auth/resend-otp
+// @access  Public
+const resendOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Phone number is required.' });
+    }
+    await authService.resendRegistrationOTP(phone);
+    res.status(200).json({ success: true, message: 'OTP resent successfully to your phone.' });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Error in resendOtp:', error);
+    res.status(500).json({ success: false, message: 'Server error resending OTP.' });
+  }
+};
+
 // @desc    Send OTP for new customer registration
 // @route   POST /api/auth/send-registration-otp
 // @access  Public
@@ -143,6 +163,16 @@ const resetPassword = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error resetting password.' });
   }
 };
+// @desc    Customer Logout
+// @route   POST /api/auth/logout
+// @access  Public
+const logout = async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+  res.status(200).json({ success: true, message: 'Logged out successfully.' });
+};
 
-
-module.exports = { register, sendRegistrationOtp, login, forgotPassword, verifyOtp, resetPassword };
+module.exports = { register, sendRegistrationOtp, resendOtp, login, forgotPassword, verifyOtp, resetPassword, logout };

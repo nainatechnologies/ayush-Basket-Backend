@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getProducts, getAdminProducts, getProductById,
+  getProducts, getAdminProducts, getProductById, searchProducts,
   createProduct, updateProduct, deleteProduct,
   toggleVisibility, updateStock
 } = require('./product.controller');
@@ -18,6 +18,9 @@ router.route('/')
 
 // Admin-only full product list (includes hidden)
 router.get('/admin/all', protect, admin, getAdminProducts);
+
+// Public search
+router.get('/search', searchProducts);
 
 router.route('/:id')
   .get(getProductById)

@@ -79,8 +79,17 @@ const cancelOrder = async (req, res) => {
 // @access  Private/Admin
 const getOrders = async (req, res) => {
   try {
-    const finalOrders = await orderService.getAllAdminOrders(req.query.status);
-    res.status(200).json({ success: true, count: finalOrders.length, data: finalOrders });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await orderService.getAllAdminOrders(req.query.status, page, limit);
+    res.status(200).json({
+      success: true,
+      count: result.data.length,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
+      data: result.data
+    });
   } catch (error) {
     console.error('Error fetching all orders:', error);
     res.status(500).json({ success: false, message: 'Server error fetching orders' });

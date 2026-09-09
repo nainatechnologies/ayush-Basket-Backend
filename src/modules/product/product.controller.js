@@ -10,6 +10,23 @@ const getImageUrlFromFile = (file) => {
   };
 };
 
+// @desc    Search products by name/description/category (customer-facing)
+// @route   GET /api/products/search?q=term
+// @access  Public
+const searchProducts = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 1) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
+    }
+    const formatted = await productService.searchProducts(q.trim());
+    res.status(200).json({ success: true, count: formatted.length, data: formatted });
+  } catch (error) {
+    console.error('Error searching products:', error);
+    res.status(500).json({ success: false, message: 'Server error searching products.' });
+  }
+};
+
 // @desc    Get all products (CUSTOMER — never returns hidden products)
 // @route   GET /api/products
 // @access  Public
@@ -192,6 +209,7 @@ const deleteProduct = async (req, res) => {
 };
 
 module.exports = {
+  searchProducts,
   getProducts,
   getAdminProducts,
   getProductById,

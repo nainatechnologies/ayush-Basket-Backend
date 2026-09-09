@@ -354,7 +354,16 @@ const updateAdminProfile = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error updating admin profile.' });
   }
 };
-module.exports = { adminLogin, forgotPassword, verifyOtp, resetPassword, changePassword, getAdminProfile, updateAdminProfile };
+// @desc    Admin Logout
+// @route   POST /api/admin/logout
+// @access  Public
+const logout = async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+  res.status(200).json({ success: true, message: 'Admin logged out successfully.' });
+};
 
-
-
+module.exports = { adminLogin, forgotPassword, verifyOtp, resetPassword, changePassword, getAdminProfile, updateAdminProfile, logout };

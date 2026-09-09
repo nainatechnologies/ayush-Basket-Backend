@@ -23,6 +23,9 @@ const updateProfile = async (userId, data) => {
 
   if (data.name) user.name = data.name;
   if (data.phone) user.phone = data.phone;
+  if (data.gstNumber !== undefined || data.gst_number !== undefined) {
+    user.gstNumber = data.gstNumber || data.gst_number || null;
+  }
 
   await user.save();
   return user;

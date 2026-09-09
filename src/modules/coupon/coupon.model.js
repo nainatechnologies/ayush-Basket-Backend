@@ -58,6 +58,11 @@ const Coupon = sequelize.define('Coupon', {
   ctaLink: { type: DataTypes.STRING, field: 'ctaLink' },
   image: { type: DataTypes.STRING },
   gradientBg: { type: DataTypes.STRING, field: 'gradientBg' },
+  isOccasional: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_occasional'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

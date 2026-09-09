@@ -23,13 +23,15 @@ const addAddress = async (userId, data) => {
 
     const address = await Address.create({
       userId,
-      fullName: data.full_name.trim(),
+      fullName: data.full_name ? data.full_name.trim() : (data.fullName || '').trim(),
       phone: data.phone.trim(),
       street: data.street.trim(),
       city: data.city.trim(),
       state: data.state.trim(),
       pincode: data.pincode.trim(),
-      is_default: shouldBeDefault
+      is_default: shouldBeDefault,
+      addressType: data.address_type || data.addressType || 'home',
+      flatHouse: data.flat_house || data.flatHouse || null
     }, { transaction: t });
 
     await t.commit();
@@ -62,11 +64,14 @@ const updateAddress = async (userId, addressId, data) => {
     }
 
     if (data.full_name) address.fullName = data.full_name.trim();
+    if (data.fullName) address.fullName = data.fullName.trim();
     if (data.phone) address.phone = data.phone.trim();
     if (data.street) address.street = data.street.trim();
     if (data.city) address.city = data.city.trim();
     if (data.state) address.state = data.state.trim();
     if (data.pincode) address.pincode = data.pincode.trim();
+    if (data.address_type || data.addressType) address.addressType = data.address_type || data.addressType;
+    if (data.flat_house !== undefined || data.flatHouse !== undefined) address.flatHouse = data.flat_house || data.flatHouse || null;
 
     await address.save({ transaction: t });
     await t.commit();

@@ -16,6 +16,33 @@ const Prescription = sequelize.define('Prescription', {
     field: 'image_mime_type',
     allowNull: true,
   },
+  image2Url: {
+    type: DataTypes.TEXT('long'),
+    field: 'image_url_2'
+  },
+  image2MimeType: {
+    type: DataTypes.STRING,
+    field: 'image_mime_type_2',
+    allowNull: true,
+  },
+  image3Url: {
+    type: DataTypes.TEXT('long'),
+    field: 'image_url_3'
+  },
+  image3MimeType: {
+    type: DataTypes.STRING,
+    field: 'image_mime_type_3',
+    allowNull: true,
+  },
+  image4Url: {
+    type: DataTypes.TEXT('long'),
+    field: 'image_url_4'
+  },
+  image4MimeType: {
+    type: DataTypes.STRING,
+    field: 'image_mime_type_4',
+    allowNull: true,
+  },
   notes: {
     type: DataTypes.TEXT
   },

@@ -24,7 +24,7 @@ const addToCart = async (req, res) => {
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
     console.error('Error adding to cart:', error);
-    res.status(500).json({ success: false, message: 'Server error adding to cart' });
+    res.status(500).json({ success: false, message: 'Server error adding to cart: ' + error.message });
   }
 };
 

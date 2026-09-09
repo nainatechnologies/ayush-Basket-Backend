@@ -399,7 +399,33 @@ const deleteProductById = async (id) => {
   }
 };
 
+const searchProducts = async (searchTerm) => {
+  const whereClause = {
+    status: { [Op.notIn]: ['hidden', 'Inactive', 'inactive'] },
+    [Op.or]: [
+      { name: { [Op.like]: `%${searchTerm}%` } },
+      { description: { [Op.like]: `%${searchTerm}%` } },
+      { fullDescription: { [Op.like]: `%${searchTerm}%` } }
+    ]
+  };
+
+  const products = await Product.findAll({
+    where: whereClause,
+    include: [{ model: Category, as: 'category' }],
+    limit: 20
+  });
+
+  return products.map(p => {
+    const prod = p.toJSON();
+    prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
+    prod.image = prod.imageUrl;
+    prod.category_name = prod.category ? prod.category.name : null;
+    return prod;
+  });
+};
+
 module.exports = {
+  searchProducts,
   getCustomerProducts,
   getAdminProductsList,
   getProductDetails,

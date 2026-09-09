@@ -29,12 +29,23 @@ const protect = (req, res, next) => {
   }
 };
 
-const admin = (req, res, next) => {
+const admin = async (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
-    next();
-  } else {
-    res.status(403).json({ success: false, message: 'Not authorized as an admin.' });
+    return next();
+  } else if (req.user && req.user.id) {
+    try {
+      const { User } = require('../models');
+      const user = await User.findByPk(req.user.id);
+      if (user && user.role === 'admin') {
+        req.user.role = 'admin'; // update the req.user object
+        return next();
+      }
+    } catch (error) {
+      console.error('Error verifying admin role in DB:', error);
+    }
   }
+  
+  res.status(403).json({ success: false, message: 'Not authorized as an admin.' });
 };
 
 module.exports = { protect, admin };

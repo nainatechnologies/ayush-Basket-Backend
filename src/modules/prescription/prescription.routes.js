@@ -11,7 +11,7 @@ const validate = require('../../middleware/validate.middleware');
 const { uploadPrescriptionSchema, approvePrescriptionSchema } = require('./prescription.validation');
 
 // Customer routes
-router.post('/', protect, upload.single('prescription'), validate(uploadPrescriptionSchema), uploadPrescription);
+router.post('/', protect, upload.fields([{ name: 'prescription', maxCount: 4 }, { name: 'prescriptions', maxCount: 4 }]), validate(uploadPrescriptionSchema), uploadPrescription);
 router.get('/my', protect, getMyPrescriptions);
 
 // Public image routes (so frontend <img> tags work without tokens)

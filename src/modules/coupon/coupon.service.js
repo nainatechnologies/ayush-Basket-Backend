@@ -19,6 +19,7 @@ const createNewCoupon = async (data) => {
     usageLimit: data.usageLimit || null,
     usedCount: 0,
     isActive: data.isActive !== undefined ? data.isActive : true,
+    isOccasional: data.isOccasional || false,
     tag: data.tag || null,
     tagBg: data.tagBg || null,
     title: data.title || null,

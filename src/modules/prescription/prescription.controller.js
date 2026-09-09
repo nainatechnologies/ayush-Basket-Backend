@@ -6,18 +6,38 @@ const smsService = require('../../services/smsService');
 // @access  Private (Customer)
 const uploadPrescription = async (req, res) => {
   try {
-    let imageObj = null;
-    if (req.file && req.file.buffer) {
-      imageObj = {
-        mimeType: req.file.mimetype,
-        base64: req.file.buffer.toString('base64')
-      };
-    } else if (req.body.image_url) {
-      const { extractBase64AndMimeType } = require('../../utils/imageUtils');
-      imageObj = extractBase64AndMimeType(req.body.image_url);
+    let imageObjs = [];
+    const files = (req.files && (req.files['prescription'] || req.files['prescriptions'])) || [];
+    
+    // Support fallback to req.file if some other middleware set it
+    if (req.file && files.length === 0) {
+      files.push(req.file);
     }
 
-    const prescription = await prescriptionService.uploadNewPrescription(req.user.id, req.body || {}, imageObj);
+    if (files.length > 0) {
+      files.slice(0, 4).forEach(file => {
+        if (file.buffer) {
+          imageObjs.push({
+            mimeType: file.mimetype,
+            base64: file.buffer.toString('base64')
+          });
+        }
+      });
+    } else {
+      const { extractBase64AndMimeType } = require('../../utils/imageUtils');
+      if (req.body.image_url) imageObjs.push(extractBase64AndMimeType(req.body.image_url));
+      if (req.body.image_url_2) imageObjs.push(extractBase64AndMimeType(req.body.image_url_2));
+      if (req.body.image_url_3) imageObjs.push(extractBase64AndMimeType(req.body.image_url_3));
+      if (req.body.image_url_4) imageObjs.push(extractBase64AndMimeType(req.body.image_url_4));
+      
+      if (Array.isArray(req.body.images)) {
+        req.body.images.slice(0, 4).forEach(img => {
+          imageObjs.push(extractBase64AndMimeType(img));
+        });
+      }
+    }
+
+    const prescription = await prescriptionService.uploadNewPrescription(req.user.id, req.body || {}, imageObjs);
 
     // Trigger SMS notification
     const userPhone = req.body.phone || req.user.phone;
@@ -120,15 +140,32 @@ const servePrescriptionImage = async (req, res) => {
   try {
     const { Prescription } = require('../../models');
     const prescription = await Prescription.findByPk(req.params.id, {
-      attributes: ['id', 'userId', 'imageUrl', 'imageMimeType']
+      attributes: ['id', 'userId', 'imageUrl', 'imageMimeType', 'image2Url', 'image2MimeType', 'image3Url', 'image3MimeType', 'image4Url', 'image4MimeType']
     });
 
-    if (!prescription || !prescription.imageUrl) {
-      return res.status(404).json({ success: false, message: 'Prescription image not found.' });
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: 'Prescription not found.' });
     }
 
-    const mimeType = prescription.imageMimeType || 'image/jpeg';
-    let base64Data = prescription.imageUrl;
+    const index = req.query.index ? String(req.query.index) : '1';
+    let base64Data = null;
+    let mimeType = 'image/jpeg';
+
+    if (index === '1' && prescription.imageUrl) {
+      base64Data = prescription.imageUrl;
+      mimeType = prescription.imageMimeType || mimeType;
+    } else if (index === '2' && prescription.image2Url) {
+      base64Data = prescription.image2Url;
+      mimeType = prescription.image2MimeType || mimeType;
+    } else if (index === '3' && prescription.image3Url) {
+      base64Data = prescription.image3Url;
+      mimeType = prescription.image3MimeType || mimeType;
+    } else if (index === '4' && prescription.image4Url) {
+      base64Data = prescription.image4Url;
+      mimeType = prescription.image4MimeType || mimeType;
+    } else {
+      return res.status(404).json({ success: false, message: `Prescription image ${index} not found.` });
+    }
 
     if (base64Data.startsWith('http://') || base64Data.startsWith('https://') || base64Data.startsWith('/uploads/')) {
       return res.redirect(base64Data);

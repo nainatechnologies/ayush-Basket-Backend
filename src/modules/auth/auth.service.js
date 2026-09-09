@@ -5,6 +5,36 @@ const { sendSMS } = require('../../utils/smsHelper');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+const resendRegistrationOTP = async (phone) => {
+  const normalizedPhone = phone.trim();
+
+  // Check user doesn't already exist
+  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  if (existingPhone) {
+    const error = new Error('An account with this phone number already exists. Please login.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  // Invalidate old unused OTPs for this phone
+  const { RegistrationOtp } = require('../../models');
+  await RegistrationOtp.update({ used: true }, { where: { phone: normalizedPhone, used: false } });
+
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  await RegistrationOtp.create({ phone: normalizedPhone, otp, expiresAt, used: false });
+
+  console.log('\n=============================================');
+  console.log(`[RESEND OTP] OTP for ${normalizedPhone} is: ${otp}`);
+  console.log('=============================================\n');
+
+  const message = `Dear Customer, your OTP is ${otp} for AyushBasket registration. Valid for 10 minutes.`;
+  await sendSMS(normalizedPhone, message, process.env.SPEAR_UC_TID_REGISTRATION);
+
+  return true;
+};
+
 const sendRegistrationOTP = async (phone) => {
   const normalizedPhone = phone.trim();
   
@@ -253,6 +283,7 @@ const resetPasswordWithToken = async (resetToken, newPassword) => {
 
 module.exports = {
   sendRegistrationOTP,
+  resendRegistrationOTP,
   registerUser,
   loginUser,
   generateForgotPasswordOTP,

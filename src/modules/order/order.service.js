@@ -38,7 +38,9 @@ const createOrder = async (userId, data) => {
         productId: product.id,
         quantity: item.quantity,
         price: itemPrice,
-        purchasePrice: product.costPrice || 0
+        purchasePrice: product.costPrice || 0,
+        productName: product.name,
+        productImage: product.imageUrl || product.image_url || product.image || null
       });
 
       product.stock -= item.quantity;
@@ -77,8 +79,8 @@ const createOrder = async (userId, data) => {
           quantity: item.quantity,
           price: item.price,
           purchasePrice: item.purchasePrice,
-          productName: product.name,
-          productImage: product.imageUrl || product.image_url || product.image || null
+          productName: item.productName,
+          productImage: item.productImage
         }, { transaction: t });
     }
 
@@ -239,14 +241,47 @@ const cancelCustomerOrder = async (orderId, userId) => {
   await order.save();
 };
 
-const getAllAdminOrders = async (statusFilter) => {
-  console.log(`\n=========================================\nOrder received by Admin\n=========================================\n`);
+const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
+  const offset = (page - 1) * limit;
+
+  // Build status filter for raw orders
+  let orderWhere = {};
+  let prescriptionWhere = {};
+  let statusMappedForFilter = null;
+
+  if (statusFilter && statusFilter !== 'All' && statusFilter !== 'null' && statusFilter !== 'undefined') {
+    const qStatus = statusFilter.toLowerCase();
+    // Map frontend status names to DB values
+    const statusMap = {
+      received: 'pending',
+      accepted: 'accepted',
+      'out for delivery': 'out_for_delivery',
+      completed: 'completed',
+      cancelled: 'cancelled'
+    };
+    const dbStatus = statusMap[qStatus] || qStatus;
+    statusMappedForFilter = dbStatus;
+    if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'pending' || dbStatus === 'accepted' || dbStatus === 'out_for_delivery') {
+      orderWhere.status = dbStatus;
+    }
+    // Prescription status mapping
+    const prescriptionStatusMap = { received: 'pending', completed: 'approved', cancelled: 'rejected' };
+    if (prescriptionStatusMap[qStatus]) {
+      prescriptionWhere.status = prescriptionStatusMap[qStatus];
+    } else if (!orderWhere.status) {
+      // If filter doesn't map to a prescription status either, skip prescriptions
+      prescriptionWhere.status = null;
+    }
+  }
+
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
 
   const orders = await Order.findAll({
+    where: orderWhere,
     order: [['created_at', 'DESC']],
     include: [
       { model: User, as: 'user', attributes: ['name', 'phone'] },
-      { model: Address, as: 'address' },
+      { model: Address, as: 'address', attributes: ['street', 'city', 'state', 'pincode', 'phone', 'fullName', 'addressType', 'flatHouse'] },
       {
         model: OrderItem,
         as: 'items',
@@ -254,7 +289,8 @@ const getAllAdminOrders = async (statusFilter) => {
           {
             model: Product,
             as: 'product',
-            include: [{ model: Category, as: 'category' }]
+            attributes: ['id', 'name', 'description', 'image_url', 'imageUrl', 'packageSize', 'potency'],
+            include: [{ model: Category, as: 'category', attributes: ['name'] }]
           }
         ]
       }
@@ -265,19 +301,22 @@ const getAllAdminOrders = async (statusFilter) => {
     const orderObj = order.toJSON();
 
     const formattedItems = (orderObj.items || []).map(item => {
-        const product = item.product || {};
-        return {
-          product_id: item.productId,
-          name: product.name || item.productName || 'Unknown Product',
+      const product = item.product || {};
+      let img = product.image_url || product.imageUrl || item.productImage || null;
+      if (img && !img.startsWith('http') && !img.startsWith('data:')) {
+        img = baseUrl + (img.startsWith('/') ? '' : '/') + img;
+      }
+      return {
+        product_id: item.productId,
+        name: product.name || item.productName || 'Unknown Product',
         shortDesc: product.description ? product.description.substring(0, 50) + '...' : '',
-        fullDesc: product.fullDescription || product.description || '',
         category: product.category ? product.category.name : '',
         price: item.price,
         qty: item.quantity,
         packageSize: product.packageSize || '-',
         potency: product.potency || '-',
-        imageUrl: product.image_url || item.productImage,
-          image: (product.image_url || item.productImage) ? ('http://localhost:5000' + (product.image_url || item.productImage).replace('http://localhost:5000', '')) : null
+        imageUrl: img,
+        image: img
       };
     });
 
@@ -294,40 +333,39 @@ const getAllAdminOrders = async (statusFilter) => {
       ...orderObj,
       status: mappedStatus,
       mappedStatus,
+      rawStatus,
       type: 'Medicine',
       date: orderObj.created_at ? new Date(orderObj.created_at).toLocaleDateString('en-IN') : 'N/A',
       created_at_iso: orderObj.created_at || null,
       customer: {
-        name: orderObj.user ? orderObj.user.name : "",
-        phone: (orderObj.address && orderObj.address.phone) ? orderObj.address.phone : (orderObj.user && orderObj.user.phone ? orderObj.user.phone : ""),
+        name: orderObj.user ? orderObj.user.name : '',
+        phone: (orderObj.address && orderObj.address.phone) ? orderObj.address.phone : (orderObj.user && orderObj.user.phone ? orderObj.user.phone : ''),
         address: orderObj.address && orderObj.address.street ?
-          `${orderObj.address.street}, ${orderObj.address.city}, ${orderObj.address.state} - ${orderObj.address.pincode}` :
-          ""
+          `${orderObj.address.flatHouse ? orderObj.address.flatHouse + ', ' : ''}${orderObj.address.street}, ${orderObj.address.city}, ${orderObj.address.state} - ${orderObj.address.pincode}` : ''
       },
       payment: {
-        method: orderObj.paymentMethod || "",
-        status: orderObj.paymentStatus || "",
-        transactionId: orderObj.transactionId || ""
+        method: orderObj.paymentMethod || '',
+        status: orderObj.paymentStatus || '',
+        transactionId: orderObj.transactionId || ''
       },
       items: formattedItems,
       product: formattedItems.length > 0 ? {
         ...formattedItems[0],
         name: formattedItems.length > 1 ? `${formattedItems[0].name} (+${formattedItems.length - 1} more items)` : formattedItems[0].name,
         qty: formattedItems.reduce((acc, curr) => acc + curr.qty, 0)
-      } : { name: "", shortDesc: "", category: "", price: 0, qty: 0 }
+      } : { name: '', shortDesc: '', category: '', price: 0, qty: 0 }
     };
   });
 
-  const prescriptions = await Prescription.findAll({
+  // Prescriptions
+  const prescriptions = prescriptionWhere.status !== null ? await Prescription.findAll({
+    where: prescriptionWhere.status ? { status: prescriptionWhere.status } : {},
     order: [['created_at', 'DESC']],
-    include: [
-      { model: User, as: 'user', attributes: ['name', 'phone'] }
-    ]
-  });
+    include: [{ model: User, as: 'user', attributes: ['name', 'phone'] }]
+  }) : [];
 
   const formattedPrescriptions = prescriptions.map(presc => {
     const prescObj = presc.toJSON();
-
     let rawPrescStatus = (prescObj.status || 'pending').toLowerCase();
     let mappedStatus;
     if (rawPrescStatus === 'pending') mappedStatus = 'Received';
@@ -342,44 +380,21 @@ const getAllAdminOrders = async (statusFilter) => {
       mappedStatus,
       date: prescObj.created_at ? new Date(prescObj.created_at).toLocaleDateString('en-IN') : 'N/A',
       created_at_iso: prescObj.created_at || null,
-      customer: {
-        name: prescObj.user ? prescObj.user.name : "",
-        phone: prescObj.user ? prescObj.user.phone : "",
-        address: ""
-      },
-      payment: {
-        method: "",
-        status: "",
-        transactionId: ""
-      },
+      customer: { name: prescObj.user ? prescObj.user.name : '', phone: prescObj.user ? prescObj.user.phone : '', address: '' },
+      payment: { method: '', status: '', transactionId: '' },
       items: [],
-      product: {
-        name: "Prescription",
-        shortDesc: prescObj.notes || "",
-        category: "Prescription",
-        price: 0,
-        qty: 0
-      }
+      product: { name: 'Prescription', shortDesc: prescObj.notes || '', category: 'Prescription', price: 0, qty: 0 }
     };
   });
 
   let allRecords = [...formattedOrders, ...formattedPrescriptions];
+  allRecords.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-  allRecords.sort((a, b) => {
-    const dateA = new Date(a.created_at || 0);
-    const dateB = new Date(b.created_at || 0);
-    return dateB - dateA;
-  });
+  const total = allRecords.length;
+  const totalPages = Math.ceil(total / limit);
+  const paginatedData = allRecords.slice(offset, offset + limit);
 
-  let finalOrders = allRecords;
-  if (statusFilter && statusFilter !== 'All' && statusFilter !== 'null' && statusFilter !== 'undefined') {
-    const qStatus = statusFilter.toLowerCase();
-    const statusMap = { pending: 'received', accepted: 'accepted', out_for_delivery: 'out for delivery', completed: 'completed', cancelled: 'cancelled' };
-    const mappedQuery = statusMap[qStatus] || qStatus;
-    finalOrders = allRecords.filter(o => (o.status || '').toLowerCase() === mappedQuery);
-  }
-
-  return finalOrders;
+  return { data: paginatedData, total, page, totalPages };
 };
 
 

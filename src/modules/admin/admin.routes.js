@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { adminLogin, forgotPassword, verifyOtp, resetPassword, changePassword, getAdminProfile, updateAdminProfile } = require('./admin.controller');
+const { adminLogin, forgotPassword, verifyOtp, resetPassword, changePassword, getAdminProfile, updateAdminProfile, logout } = require('./admin.controller');
 const { getAllCustomers } = require('../user/user.controller');
 const { protect, admin } = require('../../middleware/authMiddleware');
 
 // Public
 router.post('/login', adminLogin);
+router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);

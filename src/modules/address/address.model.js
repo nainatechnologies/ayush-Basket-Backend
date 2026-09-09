@@ -36,6 +36,16 @@ const Address = sequelize.define('Address', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  addressType: {
+    type: DataTypes.ENUM('home', 'work', 'other'),
+    defaultValue: 'home',
+    field: 'address_type'
+  },
+  flatHouse: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'flat_house'
   }
 }, {
   tableName: 'addresses'

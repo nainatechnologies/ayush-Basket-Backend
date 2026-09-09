@@ -21,6 +21,10 @@ const User = sequelize.define('User', {
   role: {
     type: DataTypes.STRING(50),
     defaultValue: 'customer'
+  },
+  gstNumber: {
+    type: DataTypes.STRING(20),
+    field: 'gst_number'
   }
 }, {
   tableName: 'users'

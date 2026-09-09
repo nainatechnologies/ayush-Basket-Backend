@@ -27,6 +27,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      gstNumber: user.gstNumber,
       createdAt: user.created_at
     });
   } catch (error) {

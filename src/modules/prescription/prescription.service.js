@@ -14,8 +14,8 @@ const buildImageSource = (url, mimeType) => {
   return `data:${mimeType || 'image/jpeg'};base64,${url}`;
 };
 
-const uploadNewPrescription = async (userId, data, imageObj) => {
-  if (!imageObj || !imageObj.base64) {
+const uploadNewPrescription = async (userId, data, imageObjs) => {
+  if (!imageObjs || imageObjs.length === 0 || !imageObjs[0].base64) {
     const error = new Error('Prescription image is required or invalid format.');
     error.statusCode = 400;
     throw error;
@@ -23,8 +23,14 @@ const uploadNewPrescription = async (userId, data, imageObj) => {
 
   return await Prescription.create({
     userId: userId,
-    imageUrl: imageObj.base64,
-    imageMimeType: imageObj.mimeType || 'image/jpeg',
+    imageUrl: imageObjs[0].base64,
+    imageMimeType: imageObjs[0].mimeType || 'image/jpeg',
+    image2Url: imageObjs[1] ? imageObjs[1].base64 : null,
+    image2MimeType: imageObjs[1] ? imageObjs[1].mimeType : null,
+    image3Url: imageObjs[2] ? imageObjs[2].base64 : null,
+    image3MimeType: imageObjs[2] ? imageObjs[2].mimeType : null,
+    image4Url: imageObjs[3] ? imageObjs[3].base64 : null,
+    image4MimeType: imageObjs[3] ? imageObjs[3].mimeType : null,
     notes: data.notes || '',
     medicines: data.medicines || '',
     patient_name: data.patient_name || data.patientName || '',
@@ -44,8 +50,14 @@ const getPrescriptionsForUser = async (userId) => {
 
   return prescriptions.map(p => {
     const pres = p.toJSON();
-    pres.image_url = pres.imageUrl ? `${baseUrl}/api/prescriptions/${pres.id}/image` : null;
+    pres.image_url = pres.imageUrl ? `${baseUrl}/api/prescriptions/${pres.id}/image?index=1` : null;
     pres.imageUrl = pres.image_url;
+    pres.image_url_2 = pres.image2Url ? `${baseUrl}/api/prescriptions/${pres.id}/image?index=2` : null;
+    pres.image2Url = pres.image_url_2;
+    pres.image_url_3 = pres.image3Url ? `${baseUrl}/api/prescriptions/${pres.id}/image?index=3` : null;
+    pres.image3Url = pres.image_url_3;
+    pres.image_url_4 = pres.image4Url ? `${baseUrl}/api/prescriptions/${pres.id}/image?index=4` : null;
+    pres.image4Url = pres.image_url_4;
     delete pres.imageBase64;
     return pres;
   });
@@ -83,6 +95,19 @@ const getAllPrescriptionsList = async (filters) => {
     pres.image_url = buildImageSource(pres.imageUrl, pres.imageMimeType);
     pres.imageUrl = pres.image_url;
 
+    if (pres.image2Url) {
+      pres.image_url_2 = buildImageSource(pres.image2Url, pres.image2MimeType);
+      pres.image2Url = pres.image_url_2;
+    }
+    if (pres.image3Url) {
+      pres.image_url_3 = buildImageSource(pres.image3Url, pres.image3MimeType);
+      pres.image3Url = pres.image_url_3;
+    }
+    if (pres.image4Url) {
+      pres.image_url_4 = buildImageSource(pres.image4Url, pres.image4MimeType);
+      pres.image4Url = pres.image_url_4;
+    }
+
     return pres;
   });
 };
@@ -116,6 +141,19 @@ const getPrescriptionDetails = async (id) => {
   pres.imageMimeType = pres.imageMimeType || 'image/jpeg';
   pres.image_url = buildImageSource(pres.imageUrl, pres.imageMimeType);
   pres.imageUrl = pres.image_url;
+
+  if (pres.image2Url) {
+    pres.image_url_2 = buildImageSource(pres.image2Url, pres.image2MimeType);
+    pres.image2Url = pres.image_url_2;
+  }
+  if (pres.image3Url) {
+    pres.image_url_3 = buildImageSource(pres.image3Url, pres.image3MimeType);
+    pres.image3Url = pres.image_url_3;
+  }
+  if (pres.image4Url) {
+    pres.image_url_4 = buildImageSource(pres.image4Url, pres.image4MimeType);
+    pres.image4Url = pres.image_url_4;
+  }
 
   return pres;
 };
