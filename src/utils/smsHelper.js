@@ -1,60 +1,56 @@
-const axios = require('axios');
+const twilio = require('twilio');
 
 /**
- * Send an SMS using the SpearUC Gateway
+ * Send an SMS using Twilio
  * @param {string} mobile - The recipient's phone number
  * @param {string} message - The message content to send
- * @param {string} templateId - The approved DLT template ID (optional depending on API strictness)
  * @returns {Promise<object>} - The response from the SMS gateway
  */
-const sendSMS = async (mobile, message, templateId = '') => {
+const sendSMS = async (mobile, message) => {
   try {
-    const baseURL = process.env.SPEAR_UC_BASE_URL;
-    const authKey = process.env.SPEAR_UC_AUTH_KEY;
-    const senderId = process.env.SPEAR_UC_SENDER_ID;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-    if (!baseURL || !authKey || !senderId) {
-      console.warn('SMS Gateway is not fully configured in .env. SMS not sent.');
-      return { success: false, message: 'SMS Gateway not configured.' };
+    if (!accountSid || !authToken || !twilioPhoneNumber) {
+      console.warn('Twilio is not fully configured in .env. SMS not sent.');
+      return { success: false, message: 'Twilio not configured.' };
     }
 
-    // Build the query parameters for SpearUC using the correct keys
-    const params = new URLSearchParams({
-      type: 'smsquicksend',
-      authKey: authKey,
-      sender: senderId,
-      to_mobileno: mobile,
-      sms_text: message,
-    });
+    const client = twilio(accountSid, authToken);
 
-    if (templateId) {
-      params.append('t_id', templateId);
+    let formattedMobile = mobile.trim();
+    // If it's a 10 digit Indian number, add +91
+    if (/^\d{10}$/.test(formattedMobile)) {
+      formattedMobile = '+91' + formattedMobile;
+    } else if (!formattedMobile.startsWith('+')) {
+      // Otherwise just prefix with + to make it E.164
+      formattedMobile = '+' + formattedMobile;
     }
 
-    // Append parameters to URL
-    const url = `${baseURL}?${params.toString()}`;
-
-    // For now we will allow it to send real SMS in development since we are testing it!
     console.log('\n=============================================');
-    console.log(`[SMS TRIGGERED] Sending to: ${mobile}`);
+    console.log(`[SMS TRIGGERED] Sending to: ${formattedMobile}`);
     console.log(`Message: ${message}`);
-    console.log(`URL: ${url.replace(authKey, '***HIDDEN***')}`);
     console.log('=============================================\n');
 
-    const response = await axios.get(url);
+    const response = await client.messages.create({
+      body: message,
+      from: twilioPhoneNumber,
+      to: formattedMobile
+    });
     
-    console.log(`[SPEAR_UC RESPONSE]:`, response.data);
-
-    if (response.data && response.data.status === 'error') {
-      return { success: false, data: response.data };
-    }
+    console.log(`[TWILIO RESPONSE]: Message SID ${response.sid}`);
 
     return {
       success: true,
-      data: response.data
+      data: response
     };
   } catch (error) {
-    console.error('Error sending SMS via SpearUC:', error.message);
+    console.error('Error sending SMS via Twilio:');
+    console.error('Message:', error.message);
+    if (error.code) console.error('Code:', error.code);
+    if (error.moreInfo) console.error('More Info:', error.moreInfo);
+    
     throw new Error('Failed to send SMS.');
   }
 };

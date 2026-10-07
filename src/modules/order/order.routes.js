@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { addOrderItems, getMyOrders, getOrders, getOrderById, updateOrderStatus, cancelOrder } = require('./order.controller');
+const { addOrderItems, getMyOrders, getOrders, getOrderById, updateOrderStatus, cancelOrder, verifyPayment } = require('./order.controller');
 const { protect, admin } = require('../../middleware/authMiddleware');
 
 const validate = require('../../middleware/validate.middleware');
@@ -38,5 +38,9 @@ router.route('/:id/status')
 // PUT    /api/orders/:id/cancel   — cancel order (customer)
 router.route('/:id/cancel')
   .put(protect, validate(cancelOrderSchema), cancelOrder);
+
+// POST   /api/orders/verify-payment — verify razorpay payment
+router.route('/verify-payment')
+  .post(protect, verifyPayment);
 
 module.exports = router;

@@ -8,7 +8,7 @@ const fs = require('fs');
 const morgan = require('morgan');
 const { sequelize, syncDB } = require('./models');
 
-const app = express();
+const app = express(); // trigger nodemon restart again
 const PORT = process.env.PORT || 5000;
 
 const helmet = require('helmet');
@@ -79,13 +79,7 @@ app.use((req, res, next) => {
     else if (path.includes('/api/admin/login')) action = 'Admin Login Attempt';
     else if (path.includes('support') && req.method === 'POST') {
       action = 'Support ticket submitted';
-      require('fs').writeFileSync('global_support_debug.json', JSON.stringify({ url: req.originalUrl, body: req.body }, null, 2));
     }
-
-    if (req.method === 'POST') {
-      require('fs').appendFileSync('all_post_requests.log', JSON.stringify({ time: new Date().toISOString(), url: req.originalUrl, body: req.body }) + '\n');
-    }
-
     console.log(`\n=========================================`);
     console.log(`🔔 [${action}]`);
     console.log(`   Method: ${req.method} | Endpoint: ${req.originalUrl}`);
@@ -100,6 +94,7 @@ app.use((req, res, next) => {
 const authRoutes = require('./modules/auth/auth.routes');
 const adminAuthRoutes = require('./modules/admin/admin.routes');
 const categoryRoutes = require('./modules/category/category.routes');
+const brandRoutes = require('./modules/brand/brand.routes');
 const productRoutes = require('./modules/product/product.routes');
 const orderRoutes = require('./modules/order/order.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
@@ -120,6 +115,7 @@ const paymentRoutes = require('./modules/payment/payment.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/brands', brandRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', dashboardRoutes);

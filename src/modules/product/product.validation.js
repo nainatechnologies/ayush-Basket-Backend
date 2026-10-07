@@ -35,11 +35,15 @@ const updateProductSchema = z.object({
     price: numericString.refine(val => val > 0, 'Price must be a positive number.').optional(),
     category_id: z.union([z.string(), z.number()]).optional(),
     stock: numericString.refine(val => val >= 0, 'Stock must be a non-negative number.').optional(),
-    discount_percentage: numericString.optional().refine(val => val === undefined || (val >= 0 && val <= 100), 'Discount percentage must be between 0 and 100.'),
-    discountPercentage: numericString.optional().refine(val => val === undefined || (val >= 0 && val <= 100), 'Discount percentage must be between 0 and 100.'),
-    cost_price: numericString.optional(),
-    costPrice: numericString.optional(),
-    expense: numericString.optional(),
+    discount_percentage: numericString.optional().nullable(),
+    discountPercentage: numericString.optional().nullable(),
+    cost_price: numericString.optional().nullable(),
+    costPrice: numericString.optional().nullable(),
+    expense: numericString.optional().nullable(),
+    packageSize: z.string().optional().nullable(),
+    package_size: z.string().optional().nullable(),
+    packSize: z.string().optional().nullable(),
+    pack_size: z.string().optional().nullable()
   }).passthrough()
 });
 

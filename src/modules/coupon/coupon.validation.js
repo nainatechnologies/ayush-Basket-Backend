@@ -24,7 +24,8 @@ const createCouponSchema = z.object({
     ctaLink: z.string().optional().nullable(),
     image: z.string().optional().nullable(),
     gradientBg: z.string().optional().nullable(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    isOccasional: z.boolean().optional()
   })
 });
 

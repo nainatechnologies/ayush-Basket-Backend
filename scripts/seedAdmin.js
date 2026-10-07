@@ -1,4 +1,5 @@
-const db = require('./config/db');
+require('dotenv').config();
+const { User } = require('../src/models');
 const bcrypt = require('bcryptjs');
 
 const seedAdmin = async () => {
@@ -6,27 +7,30 @@ const seedAdmin = async () => {
     const email = 'admin@ayushbasket.com';
     const password = 'adminpassword123';
     
-    // Check if admin already exists
-    const [existingUsers] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (existingUsers.length > 0) {
-      console.log('Admin user already exists!');
-      process.exit();
-    }
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      existingUser.password = hashedPassword;
+      existingUser.role = 'admin';
+      await existingUser.save();
+      console.log('Admin user updated successfully! Credentials reset.');
+    } else {
+      await User.create({
+        name: 'Super Admin',
+        email: email,
+        password: hashedPassword,
+        role: 'admin'
+      });
+      console.log('Admin user created successfully!');
+    }
 
-    await db.query(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      ['Super Admin', email, hashedPassword, 'admin']
-    );
-
-    console.log('Admin user created successfully!');
     console.log('Email: ' + email);
     console.log('Password: ' + password);
     process.exit();
   } catch (error) {
-    console.error('Error creating admin:', error);
+    console.error('Error creating/updating admin:', error);
     process.exit(1);
   }
 };

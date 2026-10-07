@@ -4,17 +4,21 @@ const sequelize = require('../../config/db');
 const Category = sequelize.define('Category', {
   name: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    unique: true
   },
-  description: {
-    type: DataTypes.TEXT
+  slug: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
   },
-  image: {
-    type: DataTypes.STRING
+  iconName: {
+    type: DataTypes.STRING,
+    defaultValue: 'Leaf'
   },
-  status: {
-    type: DataTypes.STRING(50),
-    defaultValue: 'active'
+  subcategories: {
+    type: DataTypes.JSON, // Use JSON column for array of objects in Sequelize
+    defaultValue: []
   }
 }, {
   tableName: 'categories'

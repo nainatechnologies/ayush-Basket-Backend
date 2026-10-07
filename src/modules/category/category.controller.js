@@ -1,75 +1,41 @@
-const categoryService = require('./category.service');
+const Category = require('./category.model');
 
-// @desc    Get all categories
-// @route   GET /api/categories
-// @access  Public
-const getCategories = async (req, res) => {
+exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await categoryService.getAllCategories();
-    res.status(200).json({ success: true, data: categories });
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching categories.' });
-  }
-};
-
-// @desc    Create a category (Admin only)
-// @route   POST /api/categories
-// @access  Private/Admin
-const createCategory = async (req, res) => {
-  try {
-    const newCategory = await categoryService.createNewCategory(req.body);
-    res.status(201).json({
+    const categories = await Category.findAll();
+    res.status(200).json({
       success: true,
-      message: 'Category created successfully.',
-      data: newCategory
+      data: categories
     });
   } catch (error) {
-    if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
-    console.error('Error creating category:', error);
-    res.status(500).json({ success: false, message: 'Server error creating category.' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch categories',
+      error: error.message
+    });
   }
 };
 
-// @desc    Update a category (Admin only)
-// @route   PUT /api/categories/:id
-// @access  Private/Admin
-const updateCategory = async (req, res) => {
-  try {
-    const category = await categoryService.updateExistingCategory(req.params.id, req.body);
-    res.status(200).json({ success: true, message: 'Category updated.', data: category });
-  } catch (error) {
-    if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
-    console.error('Error updating category:', error);
-    res.status(500).json({ success: false, message: 'Server error updating category.' });
-  }
-};
+const productService = require('../product/product.service');
+const jwt = require('jsonwebtoken');
 
-// @desc    Delete a category (Admin only)
-// @route   DELETE /api/categories/:id
-// @access  Private/Admin
-const deleteCategory = async (req, res) => {
+exports.getProductsByCategory = async (req, res) => {
   try {
-    await categoryService.deleteCategoryById(req.params.id);
-    res.status(200).json({ success: true, message: 'Category deleted.' });
+    const categoryId = req.params.id;
+    let userId = null;
+    
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch (err) {}
+    }
+    
+    const formatted = await productService.getCustomerProducts({ category: categoryId }, userId);
+    res.status(200).json({ success: true, count: formatted.length, data: formatted, products: formatted });
   } catch (error) {
-    if (error.statusCode) return res.status(error.statusCode).json({ success: false, message: error.message });
-    console.error('Error deleting category:', error);
-    res.status(500).json({ success: false, message: 'Server error deleting category.' });
-  }
-};
-
-// @desc    Get products by category
-// @route   GET /api/categories/:categoryId/products
-// @access  Public
-const getCategoryProducts = async (req, res) => {
-  try {
-    const products = await categoryService.getProductsByCategory(req.params.categoryId);
-    res.status(200).json({ success: true, count: products.length, data: products });
-  } catch (error) {
-    console.error('Error fetching category products:', error);
+    console.error('Error fetching products by category:', error);
     res.status(500).json({ success: false, message: 'Server error fetching products.' });
   }
 };
-
-module.exports = { getCategories, createCategory, updateCategory, deleteCategory, getCategoryProducts };

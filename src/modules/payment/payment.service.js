@@ -155,7 +155,7 @@ const verifyPayment = async (userId, data) => {
   await attempt.save();
 
   internalOrder.paymentStatus = 'paid';
-  internalOrder.status = 'accepted';
+  internalOrder.status = 'pending';
   internalOrder.transactionId = razorpay_payment_id;
   await internalOrder.save();
 
@@ -188,7 +188,7 @@ const handleWebhook = async (event, body) => {
 
     if (internalOrder.paymentStatus !== 'paid') {
       internalOrder.paymentStatus = 'paid';
-      internalOrder.status = 'accepted';
+      internalOrder.status = 'pending';
       internalOrder.transactionId = razorpayPaymentId;
       await internalOrder.save();
     }
@@ -230,7 +230,7 @@ const getProviderStatus = async (orderId, userId) => {
       await attempt.save();
 
       internalOrder.paymentStatus = 'paid';
-      internalOrder.status = 'accepted';
+      internalOrder.status = 'pending';
       await internalOrder.save();
 
       return { status: 'paid' };

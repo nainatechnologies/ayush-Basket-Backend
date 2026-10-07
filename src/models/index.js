@@ -2,6 +2,7 @@ const sequelize = require('../config/db');
 
 const User = require('../modules/user/user.model');
 const Category = require('../modules/category/category.model');
+const Brand = require('../modules/brand/brand.model');
 const Product = require('../modules/product/product.model');
 const Address = require('../modules/address/address.model');
 const Order = require('../modules/order/order.model');
@@ -109,6 +110,7 @@ module.exports = {
   syncDB,
   User,
   Category,
+  Brand,
   Product,
   Address,
   Order,

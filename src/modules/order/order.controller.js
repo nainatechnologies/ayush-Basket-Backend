@@ -1,4 +1,5 @@
 const orderService = require('./order.service');
+const paymentService = require('../payment/payment.service');
 
 // @desc    Add new order (customer places order)
 // @route   POST /api/orders
@@ -152,6 +153,19 @@ const deleteOrder = async (req, res) => {
   }
 };
 
+const verifyPayment = async (req, res) => {
+  try {
+    const result = await paymentService.verifyPayment(req.user.id, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    if (error.message === 'Invalid payment signature') {
+      return res.status(400).json({ success: false, message: 'Invalid signature' });
+    }
+    res.status(500).json({ success: false, message: error.message || 'Payment verification failed' });
+  }
+};
+
 module.exports = {
   addOrderItems,
   getMyOrders,
@@ -161,5 +175,6 @@ module.exports = {
   cancelOrder,
   downloadInvoice,
   uploadPaymentProof,
-  deleteOrder
+  deleteOrder,
+  verifyPayment
 };

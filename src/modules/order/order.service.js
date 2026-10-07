@@ -1,5 +1,5 @@
 const revenueService = require('../revenue/revenue.service');
-const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory } = require('../../models');
+const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory, PaymentAttempt } = require('../../models');
 const couponService = require('../coupon/coupon.service');
 const smsService = require('../../services/smsService');
 
@@ -69,7 +69,7 @@ const createOrder = async (userId, data) => {
       paymentProof: paymentProof || null,
       transactionId: transactionId || null,
       status: 'pending',
-      paymentStatus: (paymentMethod && paymentMethod.toLowerCase() !== 'cod') ? 'paid' : 'pending'
+      paymentStatus: 'pending'
     }, { transaction: t });
 
     for (const item of verifiedItems) {
@@ -84,6 +84,42 @@ const createOrder = async (userId, data) => {
         }, { transaction: t });
     }
 
+    let rzpOrderResult = null;
+    const isOnline = paymentMethod && ['card', 'upi', 'online', 'razorpay'].includes(paymentMethod.toLowerCase());
+    
+    if (isOnline) {
+      const { getRazorpayInstance } = require('../payment/payment.service');
+      const amountInPaise = Math.round(finalAmount * 100);
+      const razorpay = getRazorpayInstance();
+      
+      const rzpOrder = await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `rcpt_${order.id}`,
+        notes: {
+          userId: userId,
+          internalOrderId: order.id
+        }
+      });
+
+      await PaymentAttempt.create({
+        internalOrderId: order.id,
+        razorpayOrderId: rzpOrder.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        status: 'pending',
+        provider: 'razorpay'
+      }, { transaction: t });
+
+      rzpOrderResult = {
+        razorpayOrderId: rzpOrder.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        keyId: process.env.RAZORPAY_KEY_ID || 'mock_key_id',
+        mockMode: false
+      };
+    }
+
     await t.commit();
 
     console.log(`\n=========================================\nOrdered placed by Customer: User ID ${userId}, Order ID: ${order.id}\n=========================================\n`);
@@ -91,6 +127,13 @@ const createOrder = async (userId, data) => {
     // Send SMS for Order Placed
     if (address && address.phone) {
       smsService.sendOrderPlacedSMS(order, address.phone);
+    }
+
+    if (rzpOrderResult) {
+      return {
+        orderId: order.id,
+        ...rzpOrderResult
+      };
     }
 
     return {
@@ -109,16 +152,37 @@ const formatOrderImages = (order) => {
 
   if (orderObj.items) {
     orderObj.items = orderObj.items.map(item => {
+      // Use item.productImage as fallback
+      let rawImg = null;
+      let mimeType = 'image/jpeg';
+      
       const p = item.product;
       if (p) {
-        let finalImg = p.imageUrl || p.image_url || p.image || null;
-        if (finalImg && !finalImg.startsWith('http') && !finalImg.startsWith('data:image')) {
-          finalImg = baseUrl + (finalImg.startsWith('/') ? '' : '/') + finalImg;
-        }
-        p.imageUrl = finalImg;
-        p.image_url = finalImg;
-        p.image = finalImg;
+        rawImg = p.imageUrl || p.image_url || p.image || null;
+        mimeType = p.imageMimeType || 'image/jpeg';
+      } else {
+        rawImg = item.productImage || null;
+      }
 
+      if (rawImg) {
+        let finalImg = rawImg;
+        if (finalImg.startsWith('http')) {
+          // Already absolute URL, do nothing
+        } else if (finalImg.startsWith('/uploads/')) {
+          // Local path
+          finalImg = baseUrl + finalImg;
+        } else if (!finalImg.startsWith('data:')) {
+          // Raw base64 string
+          finalImg = `data:${mimeType};base64,${finalImg}`;
+        }
+
+        if (p) {
+          p.imageUrl = finalImg;
+          p.image_url = finalImg;
+          p.image = finalImg;
+        }
+
+        item.productImage = finalImg;
         item.imageUrl = finalImg;
         item.image_url = finalImg;
         item.image = finalImg;
@@ -303,9 +367,20 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
     const formattedItems = (orderObj.items || []).map(item => {
       const product = item.product || {};
       let img = product.image_url || product.imageUrl || item.productImage || null;
-      if (img && !img.startsWith('http') && !img.startsWith('data:')) {
-        img = baseUrl + (img.startsWith('/') ? '' : '/') + img;
+      
+      if (img) {
+        if (img.startsWith('http')) {
+          // Absolute URL
+        } else if (img.startsWith('/uploads/')) {
+          // Local path
+          img = baseUrl + img;
+        } else if (!img.startsWith('data:')) {
+          // Raw base64 string
+          const mime = product.imageMimeType || 'image/jpeg';
+          img = `data:${mime};base64,${img}`;
+        }
       }
+
       return {
         product_id: item.productId,
         name: product.name || item.productName || 'Unknown Product',

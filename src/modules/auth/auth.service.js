@@ -30,7 +30,7 @@ const resendRegistrationOTP = async (phone) => {
   console.log('=============================================\n');
 
   const message = `Dear Customer, your OTP is ${otp} for AyushBasket registration. Valid for 10 minutes.`;
-  await sendSMS(normalizedPhone, message, process.env.SPEAR_UC_TID_REGISTRATION);
+  await sendSMS(normalizedPhone, message);
 
   return true;
 };
@@ -62,9 +62,9 @@ const sendRegistrationOTP = async (phone) => {
   console.log(`[REGISTRATION OTP GENERATED] OTP for ${normalizedPhone} is: ${otp}`);
   console.log('=============================================\n');
 
-  // Send SMS using SpearUC
-  const message = `Dear Customer , your Registration OTP is ${otp} for True Mentor Login -Support Team RisiEdu`;
-  await sendSMS(normalizedPhone, message, process.env.SPEAR_UC_TID_REGISTRATION);
+  // Send SMS using Twilio
+  const message = `Dear Customer, your Registration OTP is ${otp} for AyushBasket.`;
+  await sendSMS(normalizedPhone, message);
 
   return true;
 };
@@ -195,9 +195,9 @@ const generateForgotPasswordOTP = async (phone) => {
     console.log('=============================================\n');
   }
 
-  // Send SMS using SpearUC
-  const message = `Dear Customer , your Registration OTP is ${otp} for True Mentor Login -Support Team RisiEdu`;
-  await sendSMS(user.phone, message, process.env.SPEAR_UC_TID_REGISTRATION);
+  // Send SMS using Twilio
+  const message = `Dear Customer, your Password Reset OTP is ${otp} for AyushBasket.`;
+  await sendSMS(user.phone, message);
 
   return user;
 };

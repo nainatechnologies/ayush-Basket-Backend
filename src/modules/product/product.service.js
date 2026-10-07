@@ -81,6 +81,10 @@ const getCustomerProducts = async (filters, userId = null) => {
     prod.safety_advice = prod.fullDescription;
     prod.storage_advice = prod.fullDescription;
 
+    prod.price = Number(prod.price);
+    if (prod.offerPrice) prod.offerPrice = Number(prod.offerPrice);
+    if (prod.discountPercentage) prod.discountPercentage = Number(prod.discountPercentage);
+
     if (Number(prod.stock) <= 0) {
         prod.status = 'Out of Stock';
     } else if (prod.status === 'active' || prod.status === 'Active') {

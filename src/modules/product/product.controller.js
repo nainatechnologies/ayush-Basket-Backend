@@ -20,7 +20,7 @@ const searchProducts = async (req, res) => {
       return res.status(200).json({ success: true, count: 0, data: [] });
     }
     const formatted = await productService.searchProducts(q.trim());
-    res.status(200).json({ success: true, count: formatted.length, data: formatted });
+    res.status(200).json({ success: true, count: formatted.length, data: formatted, products: formatted });
   } catch (error) {
     console.error('Error searching products:', error);
     res.status(500).json({ success: false, message: 'Server error searching products.' });
@@ -43,7 +43,7 @@ const getProducts = async (req, res) => {
       }
     }
     const formatted = await productService.getCustomerProducts(req.query, userId);
-    res.status(200).json({ success: true, count: formatted.length, data: formatted });
+    res.status(200).json({ success: true, count: formatted.length, data: formatted, products: formatted });
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ success: false, message: 'Server error fetching products.' });
