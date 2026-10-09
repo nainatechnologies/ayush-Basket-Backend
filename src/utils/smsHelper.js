@@ -11,6 +11,16 @@ const sendSMS = async (mobile, message) => {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    const isSmsEnabled = process.env.SMS_ENABLED !== 'false';
+
+    if (!isSmsEnabled) {
+      console.log('\n=============================================');
+      console.log(`[SMS MOCKED] SMS_ENABLED is false. SMS not sent to Twilio.`);
+      console.log(`Mocking send to: ${mobile}`);
+      console.log(`Message: ${message}`);
+      console.log('=============================================\n');
+      return { success: true, message: 'SMS mocked successfully.' };
+    }
 
     if (!accountSid || !authToken || !twilioPhoneNumber) {
       console.warn('Twilio is not fully configured in .env. SMS not sent.');

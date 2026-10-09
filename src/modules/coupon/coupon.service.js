@@ -114,7 +114,7 @@ const deleteCouponById = async (id) => {
 };
 
 const getActiveCoupons = async () => {
-  return await Coupon.findAll({ where: { is_active: true } });
+  return await Coupon.findAll({ where: { isActive: true } });
 };
 
 module.exports = {
