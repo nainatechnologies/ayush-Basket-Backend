@@ -7,7 +7,7 @@ const RegistrationOtp = sequelize.define('RegistrationOtp', {
     allowNull: false
   },
   otp: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(128),
     allowNull: false
   },
   expiresAt: {

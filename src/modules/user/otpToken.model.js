@@ -8,7 +8,7 @@ const OtpToken = sequelize.define('OtpToken', {
     field: 'user_id'
   },
   otp: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(128),
     allowNull: false
   },
   expiresAt: {

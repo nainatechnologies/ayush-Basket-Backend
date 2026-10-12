@@ -125,8 +125,15 @@ const createOrder = async (userId, data) => {
     console.log(`\n=========================================\nOrdered placed by Customer: User ID ${userId}, Order ID: ${order.id}\n=========================================\n`);
 
     // Send SMS for Order Placed
-    if (address && address.phone) {
-      smsService.sendOrderPlacedSMS(order, address.phone);
+    let recipientPhone = (address && address.phone) ? address.phone : null;
+    if (!recipientPhone) {
+      const userRecord = await User.findByPk(userId, { attributes: ['phone'] });
+      recipientPhone = userRecord?.phone;
+    }
+    if (recipientPhone) {
+      smsService.sendOrderPlacedSMS(order, recipientPhone).catch(err => {
+        console.error(`[Order Placed SMS] Non-fatal notification error:`, err.message);
+      });
     }
 
     if (rzpOrderResult) {
@@ -272,13 +279,23 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
   });
 
   // Send SMS on specific status updates
-  if (order.address && order.address.phone) {
-    const s = status.toLowerCase();
+  let recipientPhone = (order.address && order.address.phone) ? order.address.phone : null;
+  if (!recipientPhone) {
+    const userRecord = await User.findByPk(order.userId, { attributes: ['phone'] });
+    recipientPhone = userRecord?.phone;
+  }
+
+  if (recipientPhone) {
+    const s = (status || '').toLowerCase().trim();
 
     if (s === 'accepted' || s === 'confirmed') {
-      smsService.sendOrderAcceptedSMS(order, order.address.phone);
-    } else if (s === 'completed') {
-      smsService.sendOrderCompletedSMS(order, order.address.phone);
+      smsService.sendOrderAcceptedSMS(order, recipientPhone).catch(err => {
+        console.error(`[Order Accepted SMS] Non-fatal notification error:`, err.message);
+      });
+    } else if (s === 'completed' || s === 'delivered') {
+      smsService.sendOrderCompletedSMS(order, recipientPhone).catch(err => {
+        console.error(`[Order Completed SMS] Non-fatal notification error:`, err.message);
+      });
     }
   }
 

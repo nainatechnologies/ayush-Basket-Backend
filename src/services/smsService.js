@@ -1,126 +1,190 @@
-const { sendSMS } = require('../utils/smsHelper');
+'use strict';
+
+const { sendSMS, normalizePhoneNumber, maskPhoneNumber } = require('../utils/smsHelper');
 const { OrderNotification } = require('../models');
 
 /**
- * Checks if a notification has already been sent for this order and type.
+ * Checks if a notification has already been successfully sent for this order and type.
+ *
+ * @param {number} orderId
+ * @param {string} type - 'ORDER_PLACED' | 'ORDER_ACCEPTED' | 'ORDER_COMPLETED'
+ * @returns {Promise<boolean>}
  */
 const hasNotificationBeenSent = async (orderId, type) => {
-  const existing = await OrderNotification.findOne({
-    where: { orderId, notificationType: type }
-  });
-  return !!existing;
-};
-
-/**
- * Logs the notification to the database to prevent duplicates.
- */
-const logNotification = async (orderId, type, phone, templateId, response) => {
   try {
-    await OrderNotification.create({
-      orderId,
-      notificationType: type,
-      phoneNumber: phone,
-      templateId: templateId || '',
-      status: response.success ? 'sent' : 'failed',
-      providerMessageId: response.data ? JSON.stringify(response.data).substring(0, 250) : null
+    const existing = await OrderNotification.findOne({
+      where: { orderId, notificationType: type, status: 'sent' }
     });
+    return !!existing;
   } catch (err) {
-    console.error(`Failed to log SMS notification for Order ${orderId} [${type}]:`, err.message);
+    console.error(`[SMS Service] Error checking notification status for Order ${orderId}:`, err.message);
+    return false;
   }
 };
 
 /**
- * Triggers the ORDER_PLACED SMS.
+ * Logs or updates the notification record in the database.
+ * Handles the unique index on (order_id, notification_type) safely.
+ *
+ * @param {number} orderId
+ * @param {string} type
+ * @param {string} phone
+ * @param {string} templateId
+ * @param {object} response - { success: boolean, data?: object, error?: string }
+ */
+const logNotification = async (orderId, type, phone, templateId, response) => {
+  try {
+    const status = response.success ? 'sent' : 'failed';
+    const providerMessageId = response?.data?.sid
+      ? String(response.data.sid).substring(0, 250)
+      : response?.error
+        ? String(response.error).substring(0, 250)
+        : null;
+
+    const existing = await OrderNotification.findOne({
+      where: { orderId, notificationType: type }
+    });
+
+    if (existing) {
+      existing.phoneNumber = phone;
+      existing.templateId = templateId || '';
+      existing.status = status;
+      existing.providerMessageId = providerMessageId;
+      await existing.save();
+    } else {
+      await OrderNotification.create({
+        orderId,
+        notificationType: type,
+        phoneNumber: phone,
+        templateId: templateId || '',
+        status,
+        providerMessageId
+      });
+    }
+  } catch (err) {
+    console.error(`[SMS Service] Failed to log notification for Order ${orderId} [${type}]:`, err.message);
+  }
+};
+
+/**
+ * 1. Customer receives an order-placed confirmation after an order is successfully created.
+ *
+ * @param {object} order
+ * @param {string} phone
  */
 const sendOrderPlacedSMS = async (order, phone) => {
   const type = 'ORDER_PLACED';
   try {
-    if (!phone) return;
-    if (await hasNotificationBeenSent(order.id, type)) return;
+    if (!order || !order.id) return { success: false, message: 'Invalid order.' };
 
-    const msg = `Dear Customer, your AyushBasket order #${order.id} has been placed successfully. We will notify you once your order is confirmed. Thank you for shopping with AyushBasket.`;
-
-    let response = { success: true };
-    if (process.env.SMS_ENABLED === 'true') {
-      response = await sendSMS(phone, msg);
-    } else {
-      console.log(`[DEV MODE] Skipping real SMS. Would have sent Placed SMS to ${phone}`);
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      console.warn(`[SMS Service] Order #${order.id}: Missing or invalid recipient phone: ${maskPhoneNumber(phone)}`);
+      return { success: false, message: 'Invalid phone number.' };
     }
 
-    await logNotification(order.id, type, phone, '', response);
+    if (await hasNotificationBeenSent(order.id, type)) {
+      console.log(`[SMS Service] Order #${order.id} ${type} notification already sent. Skipping.`);
+      return { success: true, message: 'Already sent.' };
+    }
+
+    const amountText = order.totalAmount ? ` (Amount: ₹${order.totalAmount})` : '';
+    const msg = `Dear Customer, your AyushBasket order #${order.id}${amountText} has been placed successfully. We will notify you once your order is confirmed. Thank you for shopping with AyushBasket.`;
+
+    const response = await sendSMS(normalizedPhone, msg);
+    await logNotification(order.id, type, normalizedPhone, '', response);
+    return response;
   } catch (error) {
-    console.error(`[SMS Service] Failed to send ${type} SMS for Order #${order.id}:`, error.message);
+    console.error(`[SMS Service] Error in sendOrderPlacedSMS for Order #${order?.id}:`, error.message);
+    return { success: false, error: error.message };
   }
 };
 
 /**
- * Triggers the ORDER_ACCEPTED SMS.
+ * 2. Customer receives an update when the admin accepts/confirms the order for dispatch.
+ *
+ * @param {object} order
+ * @param {string} phone
  */
 const sendOrderAcceptedSMS = async (order, phone) => {
   const type = 'ORDER_ACCEPTED';
   try {
-    if (!phone) return;
-    if (await hasNotificationBeenSent(order.id, type)) return;
+    if (!order || !order.id) return { success: false, message: 'Invalid order.' };
 
-    const msg = `Dear Customer, your AyushBasket order #${order.id} has been confirmed and is being processed. Thank you for shopping with AyushBasket.`;
-
-    let response = { success: true };
-    if (process.env.SMS_ENABLED === 'true') {
-      response = await sendSMS(phone, msg);
-    } else {
-      console.log(`[DEV MODE] Skipping real SMS. Would have sent Accepted SMS to ${phone}`);
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      console.warn(`[SMS Service] Order #${order.id}: Missing or invalid recipient phone: ${maskPhoneNumber(phone)}`);
+      return { success: false, message: 'Invalid phone number.' };
     }
 
-    await logNotification(order.id, type, phone, '', response);
+    if (await hasNotificationBeenSent(order.id, type)) {
+      console.log(`[SMS Service] Order #${order.id} ${type} notification already sent. Skipping.`);
+      return { success: true, message: 'Already sent.' };
+    }
+
+    const msg = `Dear Customer, your AyushBasket order #${order.id} has been confirmed and is being processed for dispatch. Thank you for shopping with AyushBasket.`;
+
+    const response = await sendSMS(normalizedPhone, msg);
+    await logNotification(order.id, type, normalizedPhone, '', response);
+    return response;
   } catch (error) {
-    console.error(`[SMS Service] Failed to send ${type} SMS for Order #${order.id}:`, error.message);
+    console.error(`[SMS Service] Error in sendOrderAcceptedSMS for Order #${order?.id}:`, error.message);
+    return { success: false, error: error.message };
   }
 };
 
 /**
- * Triggers the ORDER_COMPLETED SMS.
+ * 3. Customer receives a thank-you message after the order is delivered or marked complete.
+ * Triggered strictly once.
+ *
+ * @param {object} order
+ * @param {string} phone
  */
 const sendOrderCompletedSMS = async (order, phone) => {
   const type = 'ORDER_COMPLETED';
   try {
-    if (!phone) return;
-    if (await hasNotificationBeenSent(order.id, type)) return;
+    if (!order || !order.id) return { success: false, message: 'Invalid order.' };
 
-    const msg = `Thank you for shopping with AyushBasket. Your order #${order.id} has been delivered successfully. We appreciate your trust and look forward to serving you again.`;
-
-    let response = { success: true };
-    if (process.env.SMS_ENABLED === 'true') {
-      response = await sendSMS(phone, msg);
-    } else {
-      console.log(`[DEV MODE] Skipping real SMS. Would have sent Completed SMS to ${phone}`);
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      console.warn(`[SMS Service] Order #${order.id}: Missing or invalid recipient phone: ${maskPhoneNumber(phone)}`);
+      return { success: false, message: 'Invalid phone number.' };
     }
 
-    await logNotification(order.id, type, phone, '', response);
+    if (await hasNotificationBeenSent(order.id, type)) {
+      console.log(`[SMS Service] Order #${order.id} ${type} thank-you message already sent. Skipping.`);
+      return { success: true, message: 'Already sent.' };
+    }
+
+    const msg = `Thank you for shopping with AyushBasket! Your order #${order.id} has been delivered successfully. We appreciate your trust and look forward to serving you again.`;
+
+    const response = await sendSMS(normalizedPhone, msg);
+    await logNotification(order.id, type, normalizedPhone, '', response);
+    return response;
   } catch (error) {
-    console.error(`[SMS Service] Failed to send ${type} SMS for Order #${order.id}:`, error.message);
+    console.error(`[SMS Service] Error in sendOrderCompletedSMS for Order #${order?.id}:`, error.message);
+    return { success: false, error: error.message };
   }
 };
 
 /**
- * Triggers the PRESCRIPTION_UPLOADED SMS.
+ * Optional: Prescription uploaded notification
+ *
+ * @param {object} prescription
+ * @param {string} phone
  */
 const sendPrescriptionUploadedSMS = async (prescription, phone) => {
   const type = 'PRESCRIPTION_UPLOADED';
   try {
-    if (!phone) return;
+    if (!prescription || !prescription.id) return;
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) return;
+
     const msg = `Dear Customer, your AyushBasket prescription upload #${prescription.id} has been received successfully. We will call you shortly to confirm your order. Thank you.`;
-    
-    let response = { success: true };
-    if (process.env.SMS_ENABLED === 'true') {
-      const { sendSMS } = require('../utils/smsHelper');
-      response = await sendSMS(phone, msg);
-    } else {
-      console.log(`[DEV MODE] Skipping real SMS. Would have sent Prescription Uploaded SMS to ${phone}`);
-    }
-    
-    await logNotification(prescription.id, type, phone, '', response);
+    const response = await sendSMS(normalizedPhone, msg);
+    await logNotification(prescription.id, type, normalizedPhone, '', response);
   } catch (error) {
-    console.error(`[SMS Service] Failed to send ${type} SMS for Prescription #${prescription.id}:`, error.message);
+    console.error(`[SMS Service] Error in sendPrescriptionUploadedSMS for Prescription #${prescription?.id}:`, error.message);
   }
 };
 
@@ -128,5 +192,7 @@ module.exports = {
   sendOrderPlacedSMS,
   sendOrderAcceptedSMS,
   sendOrderCompletedSMS,
-  sendPrescriptionUploadedSMS
+  sendPrescriptionUploadedSMS,
+  hasNotificationBeenSent,
+  logNotification
 };

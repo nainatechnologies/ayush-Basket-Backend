@@ -1,8 +1,9 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { PaymentAttempt, Order, OrderItem, Product, Address, sequelize } = require('../../models');
+const { PaymentAttempt, Order, OrderItem, Product, Address, User, sequelize } = require('../../models');
 const { MockRazorpay, isMockMode } = require('./payment.mock');
 const couponService = require('../coupon/coupon.service');
+const smsService = require('../../services/smsService');
 
 // Initialize Razorpay instance
 const getRazorpayInstance = () => {
@@ -159,7 +160,25 @@ const verifyPayment = async (userId, data) => {
   internalOrder.transactionId = razorpay_payment_id;
   await internalOrder.save();
 
-  // (Optional) We could move the cart clearing and SMS logic here or in a separate queue.
+  // Trigger order-placed SMS for online payment (guarded against duplicates)
+  try {
+    let recipientPhone = null;
+    if (internalOrder.addressId) {
+      const addr = await Address.findByPk(internalOrder.addressId);
+      recipientPhone = addr?.phone;
+    }
+    if (!recipientPhone) {
+      const u = await User.findByPk(userId, { attributes: ['phone'] });
+      recipientPhone = u?.phone;
+    }
+    if (recipientPhone) {
+      smsService.sendOrderPlacedSMS(internalOrder, recipientPhone).catch(err => {
+        console.error('[Payment Verification SMS] Non-fatal notification error:', err.message);
+      });
+    }
+  } catch (smsErr) {
+    console.error('[Payment Verification SMS] Error resolving phone:', smsErr.message);
+  }
 
   return { success: true, message: 'Payment verified successfully', orderId: internalOrder.id };
 };
@@ -191,6 +210,26 @@ const handleWebhook = async (event, body) => {
       internalOrder.status = 'pending';
       internalOrder.transactionId = razorpayPaymentId;
       await internalOrder.save();
+
+      // Trigger order-placed SMS via webhook capture
+      try {
+        let recipientPhone = null;
+        if (internalOrder.addressId) {
+          const addr = await Address.findByPk(internalOrder.addressId);
+          recipientPhone = addr?.phone;
+        }
+        if (!recipientPhone && internalOrder.userId) {
+          const u = await User.findByPk(internalOrder.userId, { attributes: ['phone'] });
+          recipientPhone = u?.phone;
+        }
+        if (recipientPhone) {
+          smsService.sendOrderPlacedSMS(internalOrder, recipientPhone).catch(err => {
+            console.error('[Payment Webhook SMS] Non-fatal notification error:', err.message);
+          });
+        }
+      } catch (smsErr) {
+        console.error('[Payment Webhook SMS] Error resolving phone:', smsErr.message);
+      }
     }
   } else if (event === 'payment.failed') {
     attempt.status = 'failed';

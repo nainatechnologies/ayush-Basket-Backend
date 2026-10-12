@@ -1,12 +1,22 @@
 const { User, OtpToken, RegistrationOtp } = require('../../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendSMS } = require('../../utils/smsHelper');
-
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const {
+  sendSMS,
+  sendTwilioVerifyOTP,
+  checkTwilioVerifyOTP,
+  normalizePhoneNumber,
+  maskPhoneNumber
+} = require('../../utils/smsHelper');
+const { generateSecureOTP, hashOTP, verifyOTP } = require('../../utils/otpHelper');
 
 const resendRegistrationOTP = async (phone) => {
-  const normalizedPhone = phone.trim();
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone) {
+    const error = new Error('Invalid phone number format.');
+    error.statusCode = 400;
+    throw error;
+  }
 
   // Check user doesn't already exist
   const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
@@ -17,17 +27,29 @@ const resendRegistrationOTP = async (phone) => {
   }
 
   // Invalidate old unused OTPs for this phone
-  const { RegistrationOtp } = require('../../models');
   await RegistrationOtp.update({ used: true }, { where: { phone: normalizedPhone, used: false } });
 
-  const otp = generateOTP();
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (verifyServiceSid) {
+    const verifyRes = await sendTwilioVerifyOTP(normalizedPhone);
+    if (verifyRes.success) {
+      await RegistrationOtp.create({
+        phone: normalizedPhone,
+        otp: 'TWILIO_VERIFY',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        used: false
+      });
+      return true;
+    }
+  }
+
+  const otp = generateSecureOTP();
+  const hashedOtp = hashOTP(otp);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  await RegistrationOtp.create({ phone: normalizedPhone, otp, expiresAt, used: false });
+  await RegistrationOtp.create({ phone: normalizedPhone, otp: hashedOtp, expiresAt, used: false });
 
-  console.log('\n=============================================');
-  console.log(`[RESEND OTP] OTP for ${normalizedPhone} is: ${otp}`);
-  console.log('=============================================\n');
+  console.log(`[AUTH] Resending Registration OTP to ${maskPhoneNumber(normalizedPhone)}`);
 
   const message = `Dear Customer, your OTP is ${otp} for AyushBasket registration. Valid for 10 minutes.`;
   await sendSMS(normalizedPhone, message);
@@ -36,7 +58,12 @@ const resendRegistrationOTP = async (phone) => {
 };
 
 const sendRegistrationOTP = async (phone) => {
-  const normalizedPhone = phone.trim();
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone) {
+    const error = new Error('Invalid phone number format.');
+    error.statusCode = 400;
+    throw error;
+  }
   
   // Check if user already exists
   const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
@@ -46,21 +73,36 @@ const sendRegistrationOTP = async (phone) => {
     throw error;
   }
 
-  const otp = generateOTP();
+  // Invalidate previous unused OTPs
+  await RegistrationOtp.update({ used: true }, { where: { phone: normalizedPhone, used: false } });
+
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (verifyServiceSid) {
+    const verifyRes = await sendTwilioVerifyOTP(normalizedPhone);
+    if (verifyRes.success) {
+      await RegistrationOtp.create({
+        phone: normalizedPhone,
+        otp: 'TWILIO_VERIFY',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        used: false
+      });
+      return true;
+    }
+  }
+
+  const otp = generateSecureOTP();
+  const hashedOtp = hashOTP(otp);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
   
-  // Save OTP to database
+  // Save securely hashed OTP to database
   await RegistrationOtp.create({
     phone: normalizedPhone,
-    otp,
+    otp: hashedOtp,
     expiresAt,
     used: false
   });
 
-  // Print in console for easy testing
-  console.log('\n=============================================');
-  console.log(`[REGISTRATION OTP GENERATED] OTP for ${normalizedPhone} is: ${otp}`);
-  console.log('=============================================\n');
+  console.log(`[AUTH] Registration OTP generated for ${maskPhoneNumber(normalizedPhone)}`);
 
   // Send SMS using Twilio
   const message = `Dear Customer, your Registration OTP is ${otp} for AyushBasket.`;
@@ -73,37 +115,52 @@ const registerUser = async (data) => {
   const normalizedEmail = data.email.toLowerCase().trim();
   const normalizedPhone = data.phone.trim();
 
-  // 1. Verify OTP First
-  if (!data.otp) {
-    const error = new Error('OTP is required for registration.');
-    error.statusCode = 400;
-    throw error;
+  // Check Twilio Verify first if configured
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (verifyServiceSid) {
+    const checkRes = await checkTwilioVerifyOTP(normalizedPhone, data.otp);
+    if (checkRes.approved) {
+      const activeRecord = await RegistrationOtp.findOne({
+        where: { phone: normalizedPhone, used: false },
+        order: [['created_at', 'DESC']]
+      });
+      if (activeRecord) {
+        activeRecord.used = true;
+        await activeRecord.save();
+      }
+    } else {
+      const error = new Error('Invalid OTP or verification failed.');
+      error.statusCode = 400;
+      throw error;
+    }
+  } else {
+    const tokenRecords = await RegistrationOtp.findAll({
+      where: { phone: normalizedPhone, used: false },
+      order: [['created_at', 'DESC']]
+    });
+
+    const matchingRecord = tokenRecords.find(rec => verifyOTP(data.otp, rec.otp));
+
+    if (!matchingRecord) {
+      const error = new Error('Invalid OTP or no pending request found.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const expiresTime = typeof matchingRecord.expiresAt === 'string' 
+      ? new Date(matchingRecord.expiresAt.endsWith('Z') ? matchingRecord.expiresAt : matchingRecord.expiresAt + 'Z').getTime()
+      : new Date(matchingRecord.expiresAt).getTime();
+
+    if (Date.now() > expiresTime) {
+      const error = new Error('OTP has expired. Please request a new one.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Mark as used
+    matchingRecord.used = true;
+    await matchingRecord.save();
   }
-
-  const tokenRecord = await RegistrationOtp.findOne({
-    where: { phone: normalizedPhone, otp: data.otp, used: false },
-    order: [['created_at', 'DESC']]
-  });
-
-  if (!tokenRecord) {
-    const error = new Error('Invalid OTP or no pending request found.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const expiresTime = typeof tokenRecord.expiresAt === 'string' 
-    ? new Date(tokenRecord.expiresAt.endsWith('Z') ? tokenRecord.expiresAt : tokenRecord.expiresAt + 'Z').getTime()
-    : new Date(tokenRecord.expiresAt).getTime();
-
-  if (Date.now() > expiresTime) {
-    const error = new Error('OTP has expired. Please request a new one.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // Mark as used
-  tokenRecord.used = true;
-  await tokenRecord.save();
 
   // 2. Ensure email/phone aren't already taken
   const existing = await User.findOne({ where: { email: normalizedEmail } });
@@ -170,65 +227,111 @@ const loginUser = async (email, password) => {
 };
 
 const generateForgotPasswordOTP = async (phone) => {
-  const user = await User.findOne({ where: { phone: phone.trim(), role: 'customer' } });
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone) {
+    return null; // Don't reveal user existence
+  }
+
+  const user = await User.findOne({ where: { phone: normalizedPhone, role: 'customer' } });
   if (!user) {
     return null; // Return null safely (don't leak user existence)
   }
-
-  const otp = generateOTP();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await OtpToken.update(
     { used: true },
     { where: { userId: user.id, used: false } }
   );
 
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (verifyServiceSid) {
+    const verifyRes = await sendTwilioVerifyOTP(normalizedPhone);
+    if (verifyRes.success) {
+      await OtpToken.create({
+        userId: user.id,
+        otp: 'TWILIO_VERIFY',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+      });
+      return user;
+    }
+  }
+
+  const otp = generateSecureOTP();
+  const hashedOtp = hashOTP(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
   await OtpToken.create({
     userId: user.id,
-    otp,
+    otp: hashedOtp,
     expiresAt
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('\n=============================================');
-    console.log(`[CUSTOMER FORGOT PASSWORD] OTP for phone: ${user.phone} is: ${otp}`);
-    console.log('=============================================\n');
-  }
+  console.log(`[AUTH] Password reset OTP generated for ${maskPhoneNumber(normalizedPhone)}`);
 
   // Send SMS using Twilio
-  const message = `Dear Customer, your Password Reset OTP is ${otp} for AyushBasket.`;
-  await sendSMS(user.phone, message);
+  const message = `Dear Customer, your Password Reset OTP is ${otp} for AyushBasket. Valid for 10 minutes.`;
+  await sendSMS(normalizedPhone, message);
 
   return user;
 };
 
 const verifyOTPAndGenerateResetToken = async (phone, otp) => {
-  const user = await User.findOne({ where: { phone: phone.trim(), role: 'customer' } });
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!normalizedPhone) {
+    const error = new Error('Invalid request.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findOne({ where: { phone: normalizedPhone, role: 'customer' } });
   if (!user) {
     const error = new Error('Invalid request.');
     error.statusCode = 400;
     throw error;
   }
 
-  const tokenRecord = await OtpToken.findOne({
-    where: { userId: user.id, otp, used: false },
-    order: [['created_at', 'DESC']]
-  });
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (verifyServiceSid) {
+    const checkRes = await checkTwilioVerifyOTP(normalizedPhone, otp);
+    if (checkRes.approved) {
+      const activeRecord = await OtpToken.findOne({
+        where: { userId: user.id, used: false },
+        order: [['created_at', 'DESC']]
+      });
+      if (activeRecord) {
+        activeRecord.used = true;
+        await activeRecord.save();
+      }
+    } else {
+      const error = new Error('Invalid or expired OTP.');
+      error.statusCode = 400;
+      throw error;
+    }
+  } else {
+    const tokenRecords = await OtpToken.findAll({
+      where: { userId: user.id, used: false },
+      order: [['created_at', 'DESC']]
+    });
 
-  if (!tokenRecord) {
-    const error = new Error('Invalid or already used OTP.');
-    error.statusCode = 400;
-    throw error;
-  }
+    const matchingRecord = tokenRecords.find(rec => verifyOTP(otp, rec.otp));
 
-  const expiresTime = typeof tokenRecord.expiresAt === 'string' 
-    ? new Date(tokenRecord.expiresAt.endsWith('Z') ? tokenRecord.expiresAt : tokenRecord.expiresAt + 'Z').getTime()
-    : new Date(tokenRecord.expiresAt).getTime();
+    if (!matchingRecord) {
+      const error = new Error('Invalid or already used OTP.');
+      error.statusCode = 400;
+      throw error;
+    }
 
-  if (Date.now() > expiresTime) {
-    const error = new Error('OTP has expired. Please request a new one.');
-    error.statusCode = 400;
-    throw error;
+    const expiresTime = typeof matchingRecord.expiresAt === 'string' 
+      ? new Date(matchingRecord.expiresAt.endsWith('Z') ? matchingRecord.expiresAt : matchingRecord.expiresAt + 'Z').getTime()
+      : new Date(matchingRecord.expiresAt).getTime();
+
+    if (Date.now() > expiresTime) {
+      const error = new Error('OTP has expired. Please request a new one.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    matchingRecord.used = true;
+    await matchingRecord.save();
   }
 
   const resetToken = jwt.sign(
@@ -236,9 +339,6 @@ const verifyOTPAndGenerateResetToken = async (phone, otp) => {
     process.env.JWT_SECRET,
     { expiresIn: '15m' }
   );
-
-  tokenRecord.used = true;
-  await tokenRecord.save();
 
   return resetToken;
 };
