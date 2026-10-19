@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [cart]: cart.service
+ */
+
 const { CartItem, Product } = require('../../models');
 
 const formatImageUrl = (url) => {
@@ -31,13 +39,26 @@ const getCartForUser = async (userId) => {
     .map(item => {
       const product = item.product;
       const priceToUse = product.offerPrice ? parseFloat(product.offerPrice) : parseFloat(product.price);
-      // If stock has dropped below what they had in cart, adjust it
+      
+      const isOutOfStock = Number(product.stock) <= 0 || 
+        (product.status && (
+          product.status.toLowerCase() === 'out of stock' ||
+          product.status.toLowerCase() === 'out_of_stock' ||
+          product.status.toLowerCase() === 'inactive' ||
+          product.status.toLowerCase() === 'not active'
+        ));
+
+      // If out of stock or stock has dropped below what they had in cart, adjust it
       let safeQuantity = item.quantity;
-      if (product.stock < safeQuantity) {
+      if (isOutOfStock) {
+        safeQuantity = 0;
+      } else if (product.stock < safeQuantity) {
         safeQuantity = product.stock;
       }
 
-      subtotal += priceToUse * safeQuantity;
+      if (!isOutOfStock) {
+        subtotal += priceToUse * safeQuantity;
+      }
       
       const finalImageUrl = buildImageSource(product.imageUrl, product.imageMimeType);
       
@@ -51,7 +72,10 @@ const getCartForUser = async (userId) => {
         image_url: finalImageUrl,
         image: finalImageUrl,
         imageUrl: finalImageUrl,
-        stock: product.stock
+        stock: isOutOfStock ? 0 : product.stock,
+        status: isOutOfStock ? 'Out of Stock' : (product.status || 'In Stock'),
+        inStock: !isOutOfStock,
+        isOutOfStock: isOutOfStock
       };
     });
 
@@ -68,8 +92,16 @@ const addItemToCart = async (userId, product_id, quantity) => {
     throw error;
   }
 
-  if (product.stock < qty) {
-    const error = new Error(`Only ${product.stock} item(s) available in stock`);
+  const isOutOfStock = Number(product.stock) <= 0 || 
+    (product.status && (
+      product.status.toLowerCase() === 'out of stock' ||
+      product.status.toLowerCase() === 'out_of_stock' ||
+      product.status.toLowerCase() === 'inactive' ||
+      product.status.toLowerCase() === 'not active'
+    ));
+
+  if (isOutOfStock || product.stock < qty) {
+    const error = new Error(`Product ${product.name} is currently out of stock`);
     error.statusCode = 400;
     throw error;
   }
@@ -110,8 +142,16 @@ const updateCartItemQuantity = async (userId, cartItemId, quantity) => {
     throw error;
   }
 
-  if (cartItem.product.stock < qty) {
-    const error = new Error('Not enough stock available');
+  const isOutOfStock = Number(cartItem.product.stock) <= 0 || 
+    (cartItem.product.status && (
+      cartItem.product.status.toLowerCase() === 'out of stock' ||
+      cartItem.product.status.toLowerCase() === 'out_of_stock' ||
+      cartItem.product.status.toLowerCase() === 'inactive' ||
+      cartItem.product.status.toLowerCase() === 'not active'
+    ));
+
+  if (isOutOfStock || cartItem.product.stock < qty) {
+    const error = new Error('Product is currently out of stock');
     error.statusCode = 400;
     throw error;
   }

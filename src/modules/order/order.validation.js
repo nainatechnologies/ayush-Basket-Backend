@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [order]: order.validation
+ */
+
 const { z } = require('zod');
 
 const numericString = z.union([

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [support]: support.service
+ */
+
 const { SupportTicket, User } = require('../../models');
 
 const createNewTicket = async (userId, data) => {

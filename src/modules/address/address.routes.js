@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [address]: address.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { getAddresses, addAddress, updateAddress, deleteAddress } = require('./address.controller');

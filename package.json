@@ -1,7 +1,7 @@
 {
   "name": "ayushbasket-bakend",
   "version": "1.0.0",
-  "description": "",
+  "description": "AyushBasket E-Commerce Backend API",
   "main": "src/server.js",
   "engines": {
     "node": ">=18.0.0",
@@ -14,26 +14,28 @@
     "dev": "nodemon src/server.js",
     "dev:node": "node --watch src/server.js",
     "setup": "node scripts/setup.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "ayushbasket",
+    "ecommerce",
+    "express",
+    "sequelize",
+    "mysql"
+  ],
+  "author": "AyushBasket Development Team",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
-    "cloudinary": "^1.41.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.0",
     "morgan": "^1.12.0",
     "multer": "^2.2.0",
-    "multer-storage-cloudinary": "^4.0.0",
     "mysql2": "^3.23.4",
     "nodemailer": "^9.0.5",
     "pdfkit": "^0.20.2",
@@ -43,12 +45,6 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
-    "@types/react-router-dom": "^5.3.3",
-    "lucide-react": "^1.34.0",
-    "nodemon": "^3.1.14",
-    "react": "^19.2.8",
-    "react-router-dom": "^7.18.2"
+    "nodemon": "^3.1.14"
   }
 }

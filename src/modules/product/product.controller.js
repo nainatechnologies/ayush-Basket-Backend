@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [product]: product.controller
+ */
+
 const productService = require('./product.service');
 const { extractBase64AndMimeType } = require('../../utils/imageUtils');
 const jwt = require('jsonwebtoken');
@@ -208,6 +216,58 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// @desc    Serve product image on demand with 24hr cache
+// @route   GET /api/products/:id/image
+// @access  Public
+const serveProductImage = async (req, res) => {
+  try {
+    const { Product } = require('../../models');
+    const product = await Product.findByPk(req.params.id, {
+      attributes: ['id', 'imageUrl', 'imageMimeType', 'imageUrl2', 'image2MimeType', 'imageUrl3', 'image3MimeType']
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+
+    const index = req.query.index ? String(req.query.index) : '1';
+    let base64Data = null;
+    let mimeType = 'image/jpeg';
+
+    if (index === '1' && product.imageUrl) {
+      base64Data = product.imageUrl;
+      mimeType = product.imageMimeType || mimeType;
+    } else if (index === '2' && product.imageUrl2) {
+      base64Data = product.imageUrl2;
+      mimeType = product.image2MimeType || mimeType;
+    } else if (index === '3' && product.imageUrl3) {
+      base64Data = product.imageUrl3;
+      mimeType = product.image3MimeType || mimeType;
+    } else {
+      return res.status(404).json({ success: false, message: `Product image ${index} not found.` });
+    }
+
+    if (base64Data.startsWith('http://') || base64Data.startsWith('https://') || base64Data.startsWith('/uploads/')) {
+      return res.redirect(base64Data);
+    }
+
+    if (base64Data.startsWith('data:')) {
+      const parts = base64Data.split(',');
+      if (parts.length > 1) {
+        base64Data = parts[1];
+      }
+    }
+
+    const imgBuffer = Buffer.from(base64Data, 'base64');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.end(imgBuffer);
+  } catch (error) {
+    console.error('Error serving product image:', error);
+    res.status(500).json({ success: false, message: 'Error loading product image.' });
+  }
+};
+
 module.exports = {
   searchProducts,
   getProducts,
@@ -217,5 +277,6 @@ module.exports = {
   updateProduct,
   toggleVisibility,
   updateStock,
-  deleteProduct
+  deleteProduct,
+  serveProductImage
 };

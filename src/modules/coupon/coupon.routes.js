@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [coupon]: coupon.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { createCoupon, getAdminCoupons, validateCoupon, updateCoupon, deleteCoupon, getActiveCoupons } = require('./coupon.controller');

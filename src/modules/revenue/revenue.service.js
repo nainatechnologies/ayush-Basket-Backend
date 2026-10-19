@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [revenue]: revenue.service
+ */
+
 const sequelize = require('../../config/db');
 const DailyRevenue = require('./dailyRevenue.model');
 const Order = require('../order/order.model');

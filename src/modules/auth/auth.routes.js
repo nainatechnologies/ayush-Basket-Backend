@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [auth]: auth.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { register, sendRegistrationOtp, resendOtp, login, forgotPassword, verifyOtp, resetPassword, logout } = require('./auth.controller');
@@ -14,7 +22,7 @@ router.post('/send-registration-otp', otpRateLimiter, validate(sendRegistrationO
 // @route   POST /api/auth/resend-otp
 // @desc    Resend registration OTP
 // @access  Public
-router.post('/resend-otp', otpRateLimiter, resendOtp);
+router.post('/resend-otp', otpRateLimiter, validate(sendRegistrationOtpSchema), resendOtp);
 
 // @route   POST /api/auth/register
 // @desc    Register a new user

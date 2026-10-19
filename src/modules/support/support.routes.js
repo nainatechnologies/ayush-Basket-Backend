@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [support]: support.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { createTicket, getMyTickets, getAllTickets, resolveTicket } = require('./support.controller');

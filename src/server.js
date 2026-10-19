@@ -1,4 +1,13 @@
 'use strict';
+
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Application entry point and HTTP server initialization
+ */
+
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const express = require('express');
@@ -158,11 +167,8 @@ app.get('/api/health', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Global Error Handler (prevents stack trace leaking to clients)
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  console.error('[Unhandled Error]', err.message);
-  res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
-});
+const errorHandler = require('./middleware/error.middleware');
+app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
 // Start — Connect to DB first, then listen

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [coupon]: coupon.controller
+ */
+
 const couponService = require('./coupon.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../../utils/response');

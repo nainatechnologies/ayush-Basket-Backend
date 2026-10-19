@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [wishlist]: wishlist.validation
+ */
+
 const { z } = require('zod');
 
 const addToWishlistSchema = z.object({

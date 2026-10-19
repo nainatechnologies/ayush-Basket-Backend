@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [review]: review.service
+ */
+
 const { Review, Order, OrderItem } = require('../../models');
 
 const addOrUpdateReview = async (userId, data) => {

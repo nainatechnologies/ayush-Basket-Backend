@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [payment]: payment.service
+ */
+
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { PaymentAttempt, Order, OrderItem, Product, Address, User, sequelize } = require('../../models');
@@ -51,7 +59,15 @@ const createPaymentOrder = async (userId, data) => {
       if (!product) {
         throw new Error(`Product ID ${item.product_id} not found`);
       }
-      if (product.stock < item.quantity) {
+      const isOutOfStock = Number(product.stock) <= 0 || 
+        (product.status && (
+          product.status.toLowerCase() === 'out of stock' ||
+          product.status.toLowerCase() === 'out_of_stock' ||
+          product.status.toLowerCase() === 'inactive' ||
+          product.status.toLowerCase() === 'not active'
+        ));
+
+      if (isOutOfStock || product.stock < item.quantity) {
         throw new Error(`Product ${product.name} is out of stock`);
       }
       

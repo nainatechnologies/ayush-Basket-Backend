@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [review]: review.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { addReview, getProductReviews } = require('./review.controller');

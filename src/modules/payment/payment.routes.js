@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [payment]: payment.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const paymentController = require('./payment.controller');

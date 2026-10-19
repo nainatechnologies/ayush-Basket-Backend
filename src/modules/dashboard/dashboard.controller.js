@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [dashboard]: dashboard.controller
+ */
+
 const dashboardService = require('./dashboard.service');
 
 // @desc    Get dashboard statistics

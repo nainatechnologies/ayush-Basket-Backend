@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [payment]: payment.controller
+ */
+
 const crypto = require('crypto');
 const paymentService = require('./payment.service');
 const { PaymentAttempt, Order } = require('../../models');

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [wishlist]: wishlist.controller
+ */
+
 const wishlistService = require('./wishlist.service');
 
 // @desc    Get user wishlist

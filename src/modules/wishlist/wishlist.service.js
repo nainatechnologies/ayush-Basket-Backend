@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [wishlist]: wishlist.service
+ */
+
 const { WishlistItem, Product } = require('../../models');
 
 const formatImageUrl = (url) => {

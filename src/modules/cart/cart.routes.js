@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [cart]: cart.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { getCart, addToCart, updateCartItem, removeCartItem, clearCart } = require('./cart.controller');

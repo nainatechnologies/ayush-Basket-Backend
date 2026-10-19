@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [revenue]: revenue.controller
+ */
+
 const revenueService = require('./revenue.service');
 
 // @desc    Get revenue analytics

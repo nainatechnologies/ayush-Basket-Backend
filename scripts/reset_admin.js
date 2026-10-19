@@ -1,1 +1,0 @@
-require('dotenv').config(); const bcrypt = require('bcryptjs'); const sequelize = require('../src/config/db'); bcrypt.hash('password123', 10).then(hash => sequelize.query(`UPDATE users SET password='${hash}' WHERE email='admin@ayushbasket.com'`)).then(() => console.log('Admin password reset')).catch(console.error).finally(() => process.exit(0))

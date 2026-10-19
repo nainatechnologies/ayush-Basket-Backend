@@ -1,5 +1,13 @@
 'use strict';
 
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Twilio SMS service for order lifecycle and transactional messaging
+ */
+
 const { sendSMS, normalizePhoneNumber, maskPhoneNumber } = require('../utils/smsHelper');
 const { OrderNotification } = require('../models');
 
@@ -134,7 +142,40 @@ const sendOrderAcceptedSMS = async (order, phone) => {
 };
 
 /**
- * 3. Customer receives a thank-you message after the order is delivered or marked complete.
+ * 3. Customer receives an update when the admin marks the order out for delivery / dispatched.
+ *
+ * @param {object} order
+ * @param {string} phone
+ */
+const sendOrderOutForDeliverySMS = async (order, phone) => {
+  const type = 'ORDER_OUT_FOR_DELIVERY';
+  try {
+    if (!order || !order.id) return { success: false, message: 'Invalid order.' };
+
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      console.warn(`[SMS Service] Order #${order.id}: Missing or invalid recipient phone: ${maskPhoneNumber(phone)}`);
+      return { success: false, message: 'Invalid phone number.' };
+    }
+
+    if (await hasNotificationBeenSent(order.id, type)) {
+      console.log(`[SMS Service] Order #${order.id} ${type} notification already sent. Skipping.`);
+      return { success: true, message: 'Already sent.' };
+    }
+
+    const msg = `Dear Customer, your AyushBasket order #${order.id} has been dispatched and is out for delivery. Thank you for shopping with AyushBasket.`;
+
+    const response = await sendSMS(normalizedPhone, msg);
+    await logNotification(order.id, type, normalizedPhone, '', response);
+    return response;
+  } catch (error) {
+    console.error(`[SMS Service] Error in sendOrderOutForDeliverySMS for Order #${order?.id}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 4. Customer receives a thank-you message after the order is delivered or marked complete.
  * Triggered strictly once.
  *
  * @param {object} order
@@ -191,6 +232,7 @@ const sendPrescriptionUploadedSMS = async (prescription, phone) => {
 module.exports = {
   sendOrderPlacedSMS,
   sendOrderAcceptedSMS,
+  sendOrderOutForDeliverySMS,
   sendOrderCompletedSMS,
   sendPrescriptionUploadedSMS,
   hasNotificationBeenSent,

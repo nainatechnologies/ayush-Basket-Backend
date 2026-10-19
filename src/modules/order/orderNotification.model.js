@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [order]: orderNotification.model
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 
@@ -8,7 +16,7 @@ const OrderNotification = sequelize.define('OrderNotification', {
     field: 'order_id'
   },
   notificationType: {
-    type: DataTypes.ENUM('ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER_COMPLETED'),
+    type: DataTypes.ENUM('ORDER_PLACED', 'ORDER_ACCEPTED', 'ORDER_OUT_FOR_DELIVERY', 'ORDER_COMPLETED'),
     allowNull: false,
     field: 'notification_type'
   },

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [user]: user.service
+ */
+
 const { User, Order } = require('../../models');
 const bcrypt = require('bcryptjs');
 

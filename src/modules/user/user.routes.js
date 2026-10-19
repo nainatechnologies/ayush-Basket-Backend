@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [user]: user.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const { getUserProfile, updateUserProfile, changePassword } = require('./user.controller');

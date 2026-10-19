@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [coupon]: coupon.model
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 

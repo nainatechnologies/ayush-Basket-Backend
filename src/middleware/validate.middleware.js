@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Middleware: validate.middleware.js
+ */
+
 const { ZodError } = require('zod');
 
 const validate = (schema) => (req, res, next) => {

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Central Sequelize model registry and relational associations
+ */
+
 const sequelize = require('../config/db');
 
 const User = require('../modules/user/user.model');
@@ -18,7 +26,7 @@ const WishlistItem = require('../modules/wishlist/wishlistItem.model');
 const OrderStatusHistory = require('../modules/order/orderStatusHistory.model');
 const DailyRevenue = require('../modules/revenue/dailyRevenue.model');
 const OrderNotification = require('../modules/order/orderNotification.model');
-const PaymentAttempt = require('./PaymentAttempt.model');
+const PaymentAttempt = require('../modules/payment/paymentAttempt.model');
 
 // Relationships
 

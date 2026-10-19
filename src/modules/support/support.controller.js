@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [support]: support.controller
+ */
+
 const supportService = require('./support.service');
 
 // @desc    Customer submits a support ticket

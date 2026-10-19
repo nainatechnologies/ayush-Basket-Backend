@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [auth]: auth.controller
+ */
+
 const authService = require('./auth.service');
 
 // @desc    Register new customer

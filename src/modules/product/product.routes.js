@@ -1,9 +1,17 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [product]: product.routes
+ */
+
 const express = require('express');
 const router = express.Router();
 const {
   getProducts, getAdminProducts, getProductById, searchProducts,
   createProduct, updateProduct, deleteProduct,
-  toggleVisibility, updateStock
+  toggleVisibility, updateStock, serveProductImage
 } = require('./product.controller');
 const { protect, admin } = require('../../middleware/authMiddleware');
 const upload = require('../../middleware/uploadMiddleware');
@@ -15,6 +23,9 @@ const { createProductSchema, updateProductSchema, updateStockSchema } = require(
 router.route('/')
   .get(getProducts)
   .post(protect, admin, upload.any(), validate(createProductSchema), createProduct);
+
+// Serve product image on demand
+router.get('/:id/image', serveProductImage);
 
 // Admin-only full product list (includes hidden)
 router.get('/admin/all', protect, admin, getAdminProducts);

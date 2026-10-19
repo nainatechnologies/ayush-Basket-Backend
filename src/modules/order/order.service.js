@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [order]: order.service
+ */
+
 const revenueService = require('../revenue/revenue.service');
 const { Order, OrderItem, Product, Category, User, Address, Prescription, sequelize, OrderStatusHistory, PaymentAttempt } = require('../../models');
 const couponService = require('../coupon/coupon.service');
@@ -27,8 +35,16 @@ const createOrder = async (userId, data) => {
         throw new Error(`Product ID ${item.product_id} not found`);
       }
 
-      if (product.stock < item.quantity) {
-        throw new Error(`Product ${product.name} is out of stock (Requested: ${item.quantity}, Available: ${product.stock})`);
+      const isOutOfStock = Number(product.stock) <= 0 || 
+        (product.status && (
+          product.status.toLowerCase() === 'out of stock' ||
+          product.status.toLowerCase() === 'out_of_stock' ||
+          product.status.toLowerCase() === 'inactive' ||
+          product.status.toLowerCase() === 'not active'
+        ));
+
+      if (isOutOfStock || product.stock < item.quantity) {
+        throw new Error(`Product ${product.name} is out of stock (Requested: ${item.quantity}, Available: ${isOutOfStock ? 0 : product.stock})`);
       }
 
       const itemPrice = product.offerPrice ? parseFloat(product.offerPrice) : parseFloat(product.price);
@@ -44,6 +60,10 @@ const createOrder = async (userId, data) => {
       });
 
       product.stock -= item.quantity;
+      if (product.stock <= 0) {
+        product.stock = 0;
+        product.status = 'Out of Stock';
+      }
       await product.save({ transaction: t });
     }
 
@@ -159,41 +179,24 @@ const formatOrderImages = (order) => {
 
   if (orderObj.items) {
     orderObj.items = orderObj.items.map(item => {
-      // Use item.productImage as fallback
-      let rawImg = null;
-      let mimeType = 'image/jpeg';
-      
+      let finalImg = item.productImage;
+      if (!finalImg || (!finalImg.startsWith('http') && !finalImg.startsWith('/uploads/'))) {
+        finalImg = `${baseUrl}/api/products/${item.productId}/image`;
+      } else if (finalImg.startsWith('/uploads/')) {
+        finalImg = baseUrl + finalImg;
+      }
+
       const p = item.product;
       if (p) {
-        rawImg = p.imageUrl || p.image_url || p.image || null;
-        mimeType = p.imageMimeType || 'image/jpeg';
-      } else {
-        rawImg = item.productImage || null;
+        p.imageUrl = finalImg;
+        p.image_url = finalImg;
+        p.image = finalImg;
       }
 
-      if (rawImg) {
-        let finalImg = rawImg;
-        if (finalImg.startsWith('http')) {
-          // Already absolute URL, do nothing
-        } else if (finalImg.startsWith('/uploads/')) {
-          // Local path
-          finalImg = baseUrl + finalImg;
-        } else if (!finalImg.startsWith('data:')) {
-          // Raw base64 string
-          finalImg = `data:${mimeType};base64,${finalImg}`;
-        }
-
-        if (p) {
-          p.imageUrl = finalImg;
-          p.image_url = finalImg;
-          p.image = finalImg;
-        }
-
-        item.productImage = finalImg;
-        item.imageUrl = finalImg;
-        item.image_url = finalImg;
-        item.image = finalImg;
-      }
+      item.productImage = finalImg;
+      item.imageUrl = finalImg;
+      item.image_url = finalImg;
+      item.image = finalImg;
       return item;
     });
   }
@@ -208,7 +211,11 @@ const getCustomerOrders = async (userId) => {
       {
         model: OrderItem,
         as: 'items',
-        include: [{ model: Product, as: 'product' }]
+        include: [{
+          model: Product,
+          as: 'product',
+          attributes: ['id', 'name', 'price', 'packageSize', 'potency']
+        }]
       },
       { model: Address, as: 'address' }
     ]
@@ -228,7 +235,8 @@ const getOrderDetails = async (orderId, userId, role) => {
           {
             model: Product,
             as: 'product',
-            include: [{ model: Category, as: 'category' }]
+            attributes: ['id', 'name', 'price', 'packageSize', 'potency', 'description'],
+            include: [{ model: Category, as: 'category', attributes: ['name'] }]
           }
         ]
       }
@@ -291,6 +299,10 @@ const updateOrderStatus = async (orderId, status, notes, adminId) => {
     if (s === 'accepted' || s === 'confirmed') {
       smsService.sendOrderAcceptedSMS(order, recipientPhone).catch(err => {
         console.error(`[Order Accepted SMS] Non-fatal notification error:`, err.message);
+      });
+    } else if (s === 'out_for_delivery' || s === 'out for delivery' || s === 'dispatched') {
+      smsService.sendOrderOutForDeliverySMS(order, recipientPhone).catch(err => {
+        console.error(`[Order Out For Delivery SMS] Non-fatal notification error:`, err.message);
       });
     } else if (s === 'completed' || s === 'delivered') {
       smsService.sendOrderCompletedSMS(order, recipientPhone).catch(err => {
@@ -357,6 +369,7 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
 
   const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
 
+  // Lean query for orders without downloading huge base64 image columns from remote database
   const orders = await Order.findAll({
     where: orderWhere,
     order: [['created_at', 'DESC']],
@@ -366,11 +379,12 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
       {
         model: OrderItem,
         as: 'items',
+        attributes: ['id', 'orderId', 'productId', 'quantity', 'price', 'productName', 'productImage'],
         include: [
           {
             model: Product,
             as: 'product',
-            attributes: ['id', 'name', 'description', 'image_url', 'imageUrl', 'packageSize', 'potency'],
+            attributes: ['id', 'name', 'description', 'packageSize', 'potency'],
             include: [{ model: Category, as: 'category', attributes: ['name'] }]
           }
         ]
@@ -383,19 +397,11 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
 
     const formattedItems = (orderObj.items || []).map(item => {
       const product = item.product || {};
-      let img = product.image_url || product.imageUrl || item.productImage || null;
-      
-      if (img) {
-        if (img.startsWith('http')) {
-          // Absolute URL
-        } else if (img.startsWith('/uploads/')) {
-          // Local path
-          img = baseUrl + img;
-        } else if (!img.startsWith('data:')) {
-          // Raw base64 string
-          const mime = product.imageMimeType || 'image/jpeg';
-          img = `data:${mime};base64,${img}`;
-        }
+      let img = item.productImage;
+      if (!img) {
+        img = `${baseUrl}/api/products/${item.productId}/image`;
+      } else if (img.startsWith('/uploads/')) {
+        img = baseUrl + img;
       }
 
       return {
@@ -449,10 +455,11 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
     };
   });
 
-  // Prescriptions
+  // Prescriptions - Lean query excluding multi-megabyte base64 columns
   const prescriptions = prescriptionWhere.status !== null ? await Prescription.findAll({
     where: prescriptionWhere.status ? { status: prescriptionWhere.status } : {},
     order: [['created_at', 'DESC']],
+    attributes: ['id', 'userId', 'notes', 'medicines', 'patient_name', 'address', 'doctor_name', 'status', 'orderId', 'created_at'],
     include: [{ model: User, as: 'user', attributes: ['name', 'phone'] }]
   }) : [];
 
@@ -465,17 +472,21 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
     else if (rawPrescStatus === 'rejected') mappedStatus = 'Cancelled';
     else mappedStatus = rawPrescStatus.charAt(0).toUpperCase() + rawPrescStatus.slice(1);
 
+    const imgUrl = `${baseUrl}/api/prescriptions/${prescObj.id}/image`;
+
     return {
       ...prescObj,
       status: mappedStatus,
       type: 'Prescription',
+      imageUrl: imgUrl,
+      imageUrl2: `${baseUrl}/api/prescriptions/${prescObj.id}/image?index=2`,
       mappedStatus,
       date: prescObj.created_at ? new Date(prescObj.created_at).toLocaleDateString('en-IN') : 'N/A',
       created_at_iso: prescObj.created_at || null,
       customer: { name: prescObj.user ? prescObj.user.name : '', phone: prescObj.user ? prescObj.user.phone : '', address: '' },
       payment: { method: '', status: '', transactionId: '' },
       items: [],
-      product: { name: 'Prescription', shortDesc: prescObj.notes || '', category: 'Prescription', price: 0, qty: 0 }
+      product: { name: 'Prescription', shortDesc: prescObj.notes || '', category: 'Prescription', price: 0, qty: 0, imageUrl: imgUrl, image: imgUrl }
     };
   });
 

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [product]: product.service
+ */
+
 const { Product, Category, WishlistItem, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
@@ -14,6 +22,74 @@ const buildImageSource = (url, mimeType) => {
   return `data:${mimeType || 'image/jpeg'};base64,${url}`;
 };
 
+const isProductOutOfStock = (stock, status) => {
+  if (stock !== undefined && stock !== null && Number(stock) <= 0) {
+    return true;
+  }
+  if (status) {
+    const s = String(status).trim().toLowerCase();
+    if (s === 'out of stock' || s === 'out_of_stock' || s === 'not active') {
+      return true;
+    }
+  }
+  return false;
+};
+
+const formatProductOutput = (prod, userWishlistIds = new Set()) => {
+  const isOutOfStock = isProductOutOfStock(prod.stock, prod.status);
+
+  prod.isWishlisted = userWishlistIds.has(prod.id);
+  prod.is_wishlisted = prod.isWishlisted;
+  prod.in_wishlist = prod.isWishlisted;
+  
+  prod.category_name = prod.category ? prod.category.name : null;
+  prod.category = prod.category_name;
+  
+  prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
+  prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
+  prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
+  
+  prod.imageBase64 = prod.imageUrl;
+  prod.image = prod.imageUrl;
+  prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
+  
+  // Add aliases for frontend compatibility
+  prod.package_size = prod.packageSize;
+  prod.packSize = prod.packageSize;
+  prod.pack_size = prod.packageSize;
+  
+  prod.full_description = prod.fullDescription;
+  prod.usage = prod.fullDescription;
+  prod.safety_advice = prod.fullDescription;
+  prod.storage_advice = prod.fullDescription;
+
+  prod.price = Number(prod.price);
+  if (prod.offerPrice !== undefined && prod.offerPrice !== null) {
+    prod.offerPrice = Number(prod.offerPrice);
+  }
+  if (prod.discountPercentage !== undefined && prod.discountPercentage !== null) {
+    prod.discountPercentage = Number(prod.discountPercentage);
+  }
+
+  if (isOutOfStock) {
+    prod.stock = 0;
+    prod.status = 'Out of Stock';
+    prod.inStock = false;
+    prod.isOutOfStock = true;
+    prod.stockStatus = 'out_of_stock';
+    prod.stock_status = 'out_of_stock';
+  } else {
+    prod.stock = Number(prod.stock) || 0;
+    prod.status = 'In Stock';
+    prod.inStock = true;
+    prod.isOutOfStock = false;
+    prod.stockStatus = 'in_stock';
+    prod.stock_status = 'in_stock';
+  }
+
+  return prod;
+};
+
 const getCustomerProducts = async (filters, userId = null) => {
   const { search, category, stockStatus } = filters;
   let whereClause = { status: { [Op.notIn]: ['hidden', 'Inactive', 'inactive'] } };
@@ -27,8 +103,12 @@ const getCustomerProducts = async (filters, userId = null) => {
 
   if (stockStatus === 'in_stock') {
     whereClause.stock = { [Op.gt]: 0 };
+    whereClause.status = { [Op.notIn]: ['hidden', 'Inactive', 'inactive', 'Out of Stock', 'out_of_stock', 'not active'] };
   } else if (stockStatus === 'out_of_stock') {
-    whereClause.stock = 0;
+    whereClause[Op.or] = [
+      { stock: { [Op.lte]: 0 } },
+      { status: { [Op.in]: ['Out of Stock', 'out_of_stock', 'not active'] } }
+    ];
   }
 
   let includeClause = [{ model: Category, as: 'category' }];
@@ -53,46 +133,7 @@ const getCustomerProducts = async (filters, userId = null) => {
     userWishlistIds = new Set(wishlistItems.map(item => item.productId));
   }
 
-  return products.map(p => {
-    const prod = p.toJSON();
-    prod.isWishlisted = userWishlistIds.has(prod.id);
-    prod.is_wishlisted = prod.isWishlisted;
-    prod.in_wishlist = prod.isWishlisted;
-    
-    prod.category_name = prod.category ? prod.category.name : null;
-    prod.category = prod.category_name;
-    
-    prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
-    prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
-    prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
-    
-    prod.imageBase64 = prod.imageUrl;
-    prod.imageMimeType = prod.imageMimeType;
-    prod.image = prod.imageUrl;
-    prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
-    
-    // Add aliases for frontend compatibility
-    prod.package_size = prod.packageSize;
-    prod.packSize = prod.packageSize;
-    prod.pack_size = prod.packageSize;
-    
-    prod.full_description = prod.fullDescription;
-    prod.usage = prod.fullDescription;
-    prod.safety_advice = prod.fullDescription;
-    prod.storage_advice = prod.fullDescription;
-
-    prod.price = Number(prod.price);
-    if (prod.offerPrice) prod.offerPrice = Number(prod.offerPrice);
-    if (prod.discountPercentage) prod.discountPercentage = Number(prod.discountPercentage);
-
-    if (Number(prod.stock) <= 0) {
-        prod.status = 'Out of Stock';
-    } else if (prod.status === 'active' || prod.status === 'Active') {
-        prod.status = 'In Stock';
-    }
-
-    return prod;
-  });
+  return products.map(p => formatProductOutput(p.toJSON(), userWishlistIds));
 };
 
 const getAdminProductsList = async (filters) => {
@@ -106,8 +147,19 @@ const getAdminProductsList = async (filters) => {
     ];
   }
 
-  if (status && status !== 'All' && status !== 'null' && status !== 'undefined') {
-    whereClause.status = status;
+  if (status && status !== 'All' && status !== 'null' && status !== 'undefined' && status !== 'Stock Status') {
+    const sLower = status.toLowerCase();
+    if (sLower === 'in stock' || sLower === 'in_stock') {
+      whereClause.stock = { [Op.gt]: 0 };
+      whereClause.status = { [Op.notIn]: ['hidden', 'Inactive', 'inactive', 'Out of Stock', 'out_of_stock'] };
+    } else if (sLower === 'out of stock' || sLower === 'out_of_stock') {
+      whereClause[Op.or] = [
+        { stock: { [Op.lte]: 0 } },
+        { status: { [Op.in]: ['Out of Stock', 'out_of_stock'] } }
+      ];
+    } else {
+      whereClause.status = status;
+    }
   }
 
   let includeClause = [{ model: Category, as: 'category' }];
@@ -136,11 +188,9 @@ const getAdminProductsList = async (filters) => {
     prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
     
     prod.imageBase64 = prod.imageUrl;
-    prod.imageMimeType = prod.imageMimeType;
     prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
     
-    // Add aliases for frontend compatibility
     prod.package_size = prod.packageSize;
     prod.packSize = prod.packageSize;
     prod.pack_size = prod.packageSize;
@@ -150,10 +200,22 @@ const getAdminProductsList = async (filters) => {
     prod.safety_advice = prod.fullDescription;
     prod.storage_advice = prod.fullDescription;
 
-    if (Number(prod.stock) <= 0) {
-        prod.status = 'Out of Stock';
+    const isOutOfStock = isProductOutOfStock(prod.stock, prod.status);
+    if (isOutOfStock) {
+      prod.status = 'Out of Stock';
+      prod.stock = 0;
+      prod.inStock = false;
+      prod.isOutOfStock = true;
+      prod.stockStatus = 'out_of_stock';
     } else if (prod.status === 'active' || prod.status === 'Active') {
-        prod.status = 'In Stock';
+      prod.status = 'In Stock';
+      prod.inStock = true;
+      prod.isOutOfStock = false;
+      prod.stockStatus = 'in_stock';
+    } else {
+      prod.inStock = Number(prod.stock) > 0;
+      prod.isOutOfStock = !prod.inStock;
+      prod.stockStatus = prod.inStock ? 'in_stock' : 'out_of_stock';
     }
 
     return prod;
@@ -171,46 +233,13 @@ const getProductDetails = async (id, userId = null) => {
     throw error;
   }
 
-  let isWishlisted = false;
+  let userWishlistIds = new Set();
   if (userId) {
     const wishlistItem = await WishlistItem.findOne({ where: { userId, productId: id } });
-    if (wishlistItem) isWishlisted = true;
+    if (wishlistItem) userWishlistIds.add(Number(id));
   }
 
-  const prod = product.toJSON();
-  prod.isWishlisted = isWishlisted;
-  prod.is_wishlisted = isWishlisted;
-  prod.in_wishlist = isWishlisted;
-  
-  prod.category_name = prod.category ? prod.category.name : null;
-  
-  prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
-  prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
-  prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
-  
-  prod.imageBase64 = prod.imageUrl;
-  prod.imageMimeType = prod.imageMimeType;
-  prod.image = prod.imageUrl;
-  prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
-
-  // Add aliases for frontend compatibility
-  prod.package_size = prod.packageSize;
-  prod.packSize = prod.packageSize;
-  prod.pack_size = prod.packageSize;
-  
-  prod.full_description = prod.fullDescription;
-  prod.usage = prod.fullDescription;
-  prod.safety_advice = prod.fullDescription;
-  prod.storage_advice = prod.fullDescription;
-
-  // If stock is 0 or less, force the status to Out of Stock
-  if (Number(prod.stock) <= 0) {
-      prod.status = 'Out of Stock';
-  } else if (prod.status === 'active' || prod.status === 'Active') {
-      prod.status = 'In Stock';
-  }
-
-  return prod;
+  return formatProductOutput(product.toJSON(), userWishlistIds);
 };
 
 const resolveCategoryId = async (category_id) => {
@@ -236,6 +265,21 @@ const createNewProduct = async (data, images) => {
       calculatedOfferPrice = parseFloat(data.price) - (parseFloat(data.price) * discountPct / 100);
     }
 
+    let initialStock = parseInt(data.stock, 10);
+    if (isNaN(initialStock) || initialStock < 0) initialStock = 0;
+
+    let initialStatus = data.status ? String(data.status).trim() : 'In Stock';
+    const isOutOfStockRequested = initialStatus.toLowerCase() === 'out of stock' || 
+      initialStatus.toLowerCase() === 'out_of_stock' || 
+      initialStock === 0;
+
+    if (isOutOfStockRequested) {
+      initialStatus = 'Out of Stock';
+      initialStock = 0;
+    } else if (initialStatus.toLowerCase() === 'active') {
+      initialStatus = 'In Stock';
+    }
+
     const product = await Product.create({
       name: data.name.trim(),
       description: data.description || '',
@@ -245,9 +289,9 @@ const createNewProduct = async (data, images) => {
       discountPercentage: discountPct,
       costPrice: parseFloat(data.cost_price) || 0,
       expense: parseFloat(data.expense) || 0,
-      stock: parseInt(data.stock, 10),
+      stock: initialStock,
       categoryId: actual_category_id,
-      status: data.status || 'active',
+      status: initialStatus,
       imageUrl: images.img1 ? (images.img1.isUrl ? images.img1.url : images.img1.base64) : null,
       imageMimeType: images.img1 ? images.img1.mimeType : null,
       imageUrl2: images.img2 ? (images.img2.isUrl ? images.img2.url : images.img2.base64) : null,
@@ -288,7 +332,9 @@ const updateExistingProduct = async (id, data, images) => {
       prod.categoryId = await resolveCategoryId(data.category_id);
     }
 
-    const newStock = data.stock !== undefined ? parseInt(data.stock, 10) : prod.stock;
+    let newStock = data.stock !== undefined ? parseInt(data.stock, 10) : prod.stock;
+    if (isNaN(newStock) || newStock < 0) newStock = 0;
+
     const newPrice = data.price !== undefined ? parseFloat(data.price) : prod.price;
     const actualDiscount = data.discountPercentage !== undefined ? data.discountPercentage : data.discount_percentage;
     const actualCostPrice = data.costPrice !== undefined ? data.costPrice : data.cost_price;
@@ -305,14 +351,36 @@ const updateExistingProduct = async (id, data, images) => {
     }
     prod.costPrice = actualCostPrice !== undefined ? parseFloat(actualCostPrice) : prod.costPrice;
     prod.expense = data.expense !== undefined ? parseFloat(data.expense) : prod.expense;
-    prod.stock = newStock;
-    
-    if (data.stock !== undefined) {
-      if (newStock > 0 && prod.status === 'Out of Stock') prod.status = 'In Stock';
-      else if (newStock === 0) prod.status = 'Out of Stock';
-      else prod.status = data.status !== undefined ? data.status : prod.status;
+
+    // Check status passed in request
+    const requestedStatus = data.status !== undefined ? String(data.status).trim() : null;
+    const isExplicitOutOfStock = requestedStatus && (
+      requestedStatus.toLowerCase() === 'out of stock' ||
+      requestedStatus.toLowerCase() === 'out_of_stock'
+    );
+    const isExplicitInStock = requestedStatus && (
+      requestedStatus.toLowerCase() === 'in stock' ||
+      requestedStatus.toLowerCase() === 'in_stock' ||
+      requestedStatus.toLowerCase() === 'active'
+    );
+
+    if (isExplicitOutOfStock) {
+      prod.status = 'Out of Stock';
+      prod.stock = 0;
+    } else if (newStock === 0) {
+      prod.status = 'Out of Stock';
+      prod.stock = 0;
+    } else if (isExplicitInStock && newStock > 0) {
+      prod.status = 'In Stock';
+      prod.stock = newStock;
+    } else if (newStock > 0 && (prod.status === 'Out of Stock' || prod.status === 'out_of_stock')) {
+      prod.status = 'In Stock';
+      prod.stock = newStock;
     } else {
-      prod.status = data.status !== undefined ? data.status : prod.status;
+      prod.stock = newStock;
+      if (requestedStatus) {
+        prod.status = requestedStatus;
+      }
     }
 
     if (images.img1) {
@@ -346,9 +414,7 @@ const updateExistingProduct = async (id, data, images) => {
     await transaction.commit();
 
     const updated = await Product.findByPk(id, { include: [{ model: Category, as: 'category' }] });
-    const formatted = updated.toJSON();
-    formatted.category_name = formatted.category ? formatted.category.name : null;
-    return formatted;
+    return formatProductOutput(updated.toJSON());
   } catch (err) {
     await transaction.rollback();
     if (!err.statusCode) err.statusCode = 400;
@@ -364,8 +430,8 @@ const toggleProductVisibility = async (id) => {
     throw error;
   }
   
-  if (product.status === 'Inactive') {
-    product.status = product.stock > 0 ? 'In Stock' : 'Out of Stock';
+  if (product.status === 'Inactive' || product.status === 'hidden' || product.status === 'inactive') {
+    product.status = Number(product.stock) > 0 ? 'In Stock' : 'Out of Stock';
   } else {
     product.status = 'Inactive';
   }
@@ -383,10 +449,14 @@ const updateProductStock = async (id, stock) => {
     throw error;
   }
 
-  product.stock = stockVal;
-  if (stockVal > 0 && product.status === 'Out of Stock') {
-    product.status = 'In Stock';
-  } else if (stockVal === 0) {
+  const safeStock = isNaN(stockVal) || stockVal < 0 ? 0 : stockVal;
+  product.stock = safeStock;
+  if (safeStock > 0) {
+    if (product.status === 'Out of Stock' || product.status === 'out_of_stock') {
+      product.status = 'In Stock';
+    }
+  } else {
+    product.stock = 0;
     product.status = 'Out of Stock';
   }
   
@@ -419,16 +489,12 @@ const searchProducts = async (searchTerm) => {
     limit: 20
   });
 
-  return products.map(p => {
-    const prod = p.toJSON();
-    prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
-    prod.image = prod.imageUrl;
-    prod.category_name = prod.category ? prod.category.name : null;
-    return prod;
-  });
+  return products.map(p => formatProductOutput(p.toJSON()));
 };
 
 module.exports = {
+  isProductOutOfStock,
+  formatProductOutput,
   searchProducts,
   getCustomerProducts,
   getAdminProductsList,

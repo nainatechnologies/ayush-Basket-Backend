@@ -1,3 +1,12 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [auth]: auth.service
+ */
+
+const { Op } = require('sequelize');
 const { User, OtpToken, RegistrationOtp } = require('../../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,16 +19,39 @@ const {
 } = require('../../utils/smsHelper');
 const { generateSecureOTP, hashOTP, verifyOTP } = require('../../utils/otpHelper');
 
+/**
+ * Returns an array of phone format variants (10-digit national, E.164 +91, with/without prefixes)
+ * so database lookups match regardless of how the phone was previously stored.
+ */
+const getPhoneVariants = (phone) => {
+  if (!phone) return [];
+  const raw = String(phone).trim();
+  const digits = raw.replace(/\D/g, '').slice(-10);
+  const e164 = normalizePhoneNumber(raw);
+  const variants = new Set();
+  if (e164) variants.add(e164);
+  if (digits && digits.length === 10) {
+    variants.add(digits);
+    variants.add(`+91${digits}`);
+    variants.add(`91${digits}`);
+    variants.add(`0${digits}`);
+  } else if (raw) {
+    variants.add(raw);
+  }
+  return Array.from(variants);
+};
+
 const resendRegistrationOTP = async (phone) => {
+  const phoneVariants = getPhoneVariants(phone);
   const normalizedPhone = normalizePhoneNumber(phone);
-  if (!normalizedPhone) {
+  if (!normalizedPhone || phoneVariants.length === 0) {
     const error = new Error('Invalid phone number format.');
     error.statusCode = 400;
     throw error;
   }
 
   // Check user doesn't already exist
-  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  const existingPhone = await User.findOne({ where: { phone: { [Op.in]: phoneVariants } } });
   if (existingPhone) {
     const error = new Error('An account with this phone number already exists. Please login.');
     error.statusCode = 409;
@@ -27,7 +59,7 @@ const resendRegistrationOTP = async (phone) => {
   }
 
   // Invalidate old unused OTPs for this phone
-  await RegistrationOtp.update({ used: true }, { where: { phone: normalizedPhone, used: false } });
+  await RegistrationOtp.update({ used: true }, { where: { phone: { [Op.in]: phoneVariants }, used: false } });
 
   const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
   if (verifyServiceSid) {
@@ -58,15 +90,16 @@ const resendRegistrationOTP = async (phone) => {
 };
 
 const sendRegistrationOTP = async (phone) => {
+  const phoneVariants = getPhoneVariants(phone);
   const normalizedPhone = normalizePhoneNumber(phone);
-  if (!normalizedPhone) {
+  if (!normalizedPhone || phoneVariants.length === 0) {
     const error = new Error('Invalid phone number format.');
     error.statusCode = 400;
     throw error;
   }
   
   // Check if user already exists
-  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  const existingPhone = await User.findOne({ where: { phone: { [Op.in]: phoneVariants } } });
   if (existingPhone) {
     const error = new Error('An account with this phone number already exists.');
     error.statusCode = 409;
@@ -74,7 +107,7 @@ const sendRegistrationOTP = async (phone) => {
   }
 
   // Invalidate previous unused OTPs
-  await RegistrationOtp.update({ used: true }, { where: { phone: normalizedPhone, used: false } });
+  await RegistrationOtp.update({ used: true }, { where: { phone: { [Op.in]: phoneVariants }, used: false } });
 
   const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
   if (verifyServiceSid) {
@@ -113,43 +146,49 @@ const sendRegistrationOTP = async (phone) => {
 
 const registerUser = async (data) => {
   const normalizedEmail = data.email.toLowerCase().trim();
-  const normalizedPhone = data.phone.trim();
+  const phoneVariants = getPhoneVariants(data.phone);
+  const normalizedPhone = normalizePhoneNumber(data.phone);
+  const rawDigits = String(data.phone || '').replace(/\D/g, '').slice(-10);
 
-  // Check Twilio Verify first if configured
-  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
-  if (verifyServiceSid) {
+  if (!normalizedPhone || phoneVariants.length === 0) {
+    const error = new Error('Invalid phone number format.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 1. Find active pending OTP record
+  const activeRecord = await RegistrationOtp.findOne({
+    where: { phone: { [Op.in]: phoneVariants }, used: false },
+    order: [['created_at', 'DESC']]
+  });
+
+  if (!activeRecord) {
+    const error = new Error('Invalid OTP or no pending verification request found.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 2. Validate OTP based on issuance method
+  if (activeRecord.otp === 'TWILIO_VERIFY') {
     const checkRes = await checkTwilioVerifyOTP(normalizedPhone, data.otp);
-    if (checkRes.approved) {
-      const activeRecord = await RegistrationOtp.findOne({
-        where: { phone: normalizedPhone, used: false },
-        order: [['created_at', 'DESC']]
-      });
-      if (activeRecord) {
-        activeRecord.used = true;
-        await activeRecord.save();
-      }
-    } else {
+    if (!checkRes.approved) {
       const error = new Error('Invalid OTP or verification failed.');
       error.statusCode = 400;
       throw error;
     }
+    activeRecord.used = true;
+    await activeRecord.save();
   } else {
-    const tokenRecords = await RegistrationOtp.findAll({
-      where: { phone: normalizedPhone, used: false },
-      order: [['created_at', 'DESC']]
-    });
-
-    const matchingRecord = tokenRecords.find(rec => verifyOTP(data.otp, rec.otp));
-
-    if (!matchingRecord) {
-      const error = new Error('Invalid OTP or no pending request found.');
+    const isValid = verifyOTP(data.otp, activeRecord.otp);
+    if (!isValid) {
+      const error = new Error('Invalid OTP or verification failed.');
       error.statusCode = 400;
       throw error;
     }
 
-    const expiresTime = typeof matchingRecord.expiresAt === 'string' 
-      ? new Date(matchingRecord.expiresAt.endsWith('Z') ? matchingRecord.expiresAt : matchingRecord.expiresAt + 'Z').getTime()
-      : new Date(matchingRecord.expiresAt).getTime();
+    const expiresTime = typeof activeRecord.expiresAt === 'string' 
+      ? new Date(activeRecord.expiresAt.endsWith('Z') ? activeRecord.expiresAt : activeRecord.expiresAt + 'Z').getTime()
+      : new Date(activeRecord.expiresAt).getTime();
 
     if (Date.now() > expiresTime) {
       const error = new Error('OTP has expired. Please request a new one.');
@@ -157,9 +196,8 @@ const registerUser = async (data) => {
       throw error;
     }
 
-    // Mark as used
-    matchingRecord.used = true;
-    await matchingRecord.save();
+    activeRecord.used = true;
+    await activeRecord.save();
   }
 
   // 2. Ensure email/phone aren't already taken
@@ -170,7 +208,7 @@ const registerUser = async (data) => {
     throw error;
   }
 
-  const existingPhone = await User.findOne({ where: { phone: normalizedPhone } });
+  const existingPhone = await User.findOne({ where: { phone: { [Op.in]: phoneVariants } } });
   if (existingPhone) {
     const error = new Error('An account with this phone number already exists.');
     error.statusCode = 409;
@@ -185,11 +223,9 @@ const registerUser = async (data) => {
     name: data.name.trim(),
     email: normalizedEmail,
     password: hashedPassword,
-    phone: normalizedPhone,
+    phone: rawDigits || normalizedPhone,
     role: 'customer'
   });
-
-  // Record successfully used, no need to clear cache since we used DB
 
   const token = jwt.sign(
     { id: newUser.id, role: newUser.role },
@@ -227,12 +263,13 @@ const loginUser = async (email, password) => {
 };
 
 const generateForgotPasswordOTP = async (phone) => {
+  const phoneVariants = getPhoneVariants(phone);
   const normalizedPhone = normalizePhoneNumber(phone);
-  if (!normalizedPhone) {
+  if (!normalizedPhone || phoneVariants.length === 0) {
     return null; // Don't reveal user existence
   }
 
-  const user = await User.findOne({ where: { phone: normalizedPhone, role: 'customer' } });
+  const user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'customer' } });
   if (!user) {
     return null; // Return null safely (don't leak user existence)
   }
@@ -275,54 +312,52 @@ const generateForgotPasswordOTP = async (phone) => {
 };
 
 const verifyOTPAndGenerateResetToken = async (phone, otp) => {
+  const phoneVariants = getPhoneVariants(phone);
   const normalizedPhone = normalizePhoneNumber(phone);
-  if (!normalizedPhone) {
+  if (!normalizedPhone || phoneVariants.length === 0) {
     const error = new Error('Invalid request.');
     error.statusCode = 400;
     throw error;
   }
 
-  const user = await User.findOne({ where: { phone: normalizedPhone, role: 'customer' } });
+  const user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'customer' } });
   if (!user) {
     const error = new Error('Invalid request.');
     error.statusCode = 400;
     throw error;
   }
 
-  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
-  if (verifyServiceSid) {
+  const activeRecord = await OtpToken.findOne({
+    where: { userId: user.id, used: false },
+    order: [['created_at', 'DESC']]
+  });
+
+  if (!activeRecord) {
+    const error = new Error('Invalid or expired OTP.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (activeRecord.otp === 'TWILIO_VERIFY') {
     const checkRes = await checkTwilioVerifyOTP(normalizedPhone, otp);
-    if (checkRes.approved) {
-      const activeRecord = await OtpToken.findOne({
-        where: { userId: user.id, used: false },
-        order: [['created_at', 'DESC']]
-      });
-      if (activeRecord) {
-        activeRecord.used = true;
-        await activeRecord.save();
-      }
-    } else {
+    if (!checkRes.approved) {
       const error = new Error('Invalid or expired OTP.');
       error.statusCode = 400;
       throw error;
     }
+    activeRecord.used = true;
+    await activeRecord.save();
   } else {
-    const tokenRecords = await OtpToken.findAll({
-      where: { userId: user.id, used: false },
-      order: [['created_at', 'DESC']]
-    });
-
-    const matchingRecord = tokenRecords.find(rec => verifyOTP(otp, rec.otp));
-
-    if (!matchingRecord) {
+    const isValid = verifyOTP(otp, activeRecord.otp);
+    if (!isValid) {
       const error = new Error('Invalid or already used OTP.');
       error.statusCode = 400;
       throw error;
     }
 
-    const expiresTime = typeof matchingRecord.expiresAt === 'string' 
-      ? new Date(matchingRecord.expiresAt.endsWith('Z') ? matchingRecord.expiresAt : matchingRecord.expiresAt + 'Z').getTime()
-      : new Date(matchingRecord.expiresAt).getTime();
+    const expiresTime = typeof activeRecord.expiresAt === 'string' 
+      ? new Date(activeRecord.expiresAt.endsWith('Z') ? activeRecord.expiresAt : activeRecord.expiresAt + 'Z').getTime()
+      : new Date(activeRecord.expiresAt).getTime();
 
     if (Date.now() > expiresTime) {
       const error = new Error('OTP has expired. Please request a new one.');
@@ -330,8 +365,8 @@ const verifyOTPAndGenerateResetToken = async (phone, otp) => {
       throw error;
     }
 
-    matchingRecord.used = true;
-    await matchingRecord.save();
+    activeRecord.used = true;
+    await activeRecord.save();
   }
 
   const resetToken = jwt.sign(
@@ -365,13 +400,6 @@ const resetPasswordWithToken = async (resetToken, newPassword) => {
     error.statusCode = 404;
     throw error;
   }
-
-  // const isSame = await bcrypt.compare(newPassword, user.password);
-  // if (isSame) {
-  //   const error = new Error('New password must be different from current password.');
-  //   error.statusCode = 400;
-  //   throw error;
-  // }
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(newPassword, salt);

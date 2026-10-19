@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [order]: order.controller
+ */
+
 const orderService = require('./order.service');
 const paymentService = require('../payment/payment.service');
 

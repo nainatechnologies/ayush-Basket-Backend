@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [dashboard]: dashboard.service
+ */
+
 const { Order, OrderItem, User, Address, Product, Category, Prescription, Coupon } = require('../../models');
 const { Op } = require('sequelize');
 

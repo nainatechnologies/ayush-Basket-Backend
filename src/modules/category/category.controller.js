@@ -1,25 +1,31 @@
-const Category = require('./category.model');
+'use strict';
 
-exports.getAllCategories = async (req, res) => {
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Controller: Category Controller
+ * Purpose: Request dispatching for category retrieval and category-filtered products
+ */
+
+const categoryService = require('./category.service');
+const productService = require('../product/product.service');
+const jwt = require('jsonwebtoken');
+
+const getAllCategories = async (req, res, next) => {
   try {
-    const categories = await Category.findAll();
+    const categories = await categoryService.getAllCategories();
     res.status(200).json({
       success: true,
       data: categories
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch categories',
-      error: error.message
-    });
+    next(error);
   }
 };
 
-const productService = require('../product/product.service');
-const jwt = require('jsonwebtoken');
-
-exports.getProductsByCategory = async (req, res) => {
+const getProductsByCategory = async (req, res, next) => {
   try {
     const categoryId = req.params.id;
     let userId = null;
@@ -29,13 +35,19 @@ exports.getProductsByCategory = async (req, res) => {
         const token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.id;
-      } catch (err) {}
+      } catch (err) {
+        // Optional auth
+      }
     }
     
     const formatted = await productService.getCustomerProducts({ category: categoryId }, userId);
     res.status(200).json({ success: true, count: formatted.length, data: formatted, products: formatted });
   } catch (error) {
-    console.error('Error fetching products by category:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching products.' });
+    next(error);
   }
+};
+
+module.exports = {
+  getAllCategories,
+  getProductsByCategory
 };

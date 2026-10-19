@@ -1,47 +1,12 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+'use strict';
 
-const PaymentAttempt = sequelize.define('PaymentAttempt', {
-  internalOrderId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    field: 'internal_order_id'
-  },
-  razorpayOrderId: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    field: 'razorpay_order_id'
-  },
-  razorpayPaymentId: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    field: 'razorpay_payment_id'
-  },
-  amount: {
-    type: DataTypes.INTEGER, // in paise
-    allowNull: false
-  },
-  currency: {
-    type: DataTypes.STRING(10),
-    defaultValue: 'INR'
-  },
-  status: {
-    type: DataTypes.STRING(50),
-    defaultValue: 'pending' // pending, authorized, captured, failed, refunded
-  },
-  provider: {
-    type: DataTypes.STRING(50),
-    defaultValue: 'razorpay'
-  },
-  notes: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  }
-}, {
-  tableName: 'payment_attempts',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at'
-});
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Backward-compatibility wrapper for PaymentAttempt model.
+ * Canonical location: src/modules/payment/paymentAttempt.model.js
+ */
 
-module.exports = PaymentAttempt;
+module.exports = require('../modules/payment/paymentAttempt.model');

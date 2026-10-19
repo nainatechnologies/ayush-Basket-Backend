@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [coupon]: coupon.service
+ */
+
 const { Coupon } = require('../../models');
 
 const createNewCoupon = async (data) => {

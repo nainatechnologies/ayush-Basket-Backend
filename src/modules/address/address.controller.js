@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [address]: address.controller
+ */
+
 const addressService = require('./address.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../../utils/response');

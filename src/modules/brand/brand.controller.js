@@ -1,17 +1,28 @@
-const Brand = require('./brand.model');
+'use strict';
 
-exports.getAllBrands = async (req, res) => {
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Controller: Brand Controller
+ * Purpose: Request dispatching for brand catalog queries
+ */
+
+const brandService = require('./brand.service');
+
+const getAllBrands = async (req, res, next) => {
   try {
-    const brands = await Brand.findAll();
+    const brands = await brandService.getAllBrands();
     res.status(200).json({
       success: true,
       data: brands
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch brands',
-      error: error.message
-    });
+    next(error);
   }
+};
+
+module.exports = {
+  getAllBrands
 };

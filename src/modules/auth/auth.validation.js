@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [auth]: auth.validation
+ */
+
 const { z } = require('zod');
 
 // Indian Mobile Number pattern (10 digits starting with 6,7,8,9)

@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Utility: invoiceGenerator.js
+ */
+
 const PDFDocument = require('pdfkit');
 
 function generateInvoice(order, res) {

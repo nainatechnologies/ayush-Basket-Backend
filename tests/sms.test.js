@@ -220,17 +220,28 @@ test('Order SMS Events & Duplicate Prevention', async () => {
     assert.strictEqual(acceptedDupRes.message, 'Already sent.');
     assert.strictEqual(sentMessages.length, 2); // Still 2!
 
-    // 3. ORDER_COMPLETED SMS (Thank-You, triggered strictly once)
+    // 3. ORDER_OUT_FOR_DELIVERY SMS (Dispatched)
+    const outForDeliveryRes = await smsService.sendOrderOutForDeliverySMS(orderObj, testPhone);
+    assert.strictEqual(outForDeliveryRes.success, true);
+    assert.strictEqual(sentMessages.length, 3);
+    assert.match(sentMessages[2].body, /dispatched and is out for delivery/);
+
+    // Duplicate check: second call should be ignored
+    const outForDeliveryDupRes = await smsService.sendOrderOutForDeliverySMS(orderObj, testPhone);
+    assert.strictEqual(outForDeliveryDupRes.message, 'Already sent.');
+    assert.strictEqual(sentMessages.length, 3); // Still 3!
+
+    // 4. ORDER_COMPLETED SMS (Thank-You, triggered strictly once)
     const completedRes = await smsService.sendOrderCompletedSMS(orderObj, testPhone);
     assert.strictEqual(completedRes.success, true);
-    assert.strictEqual(sentMessages.length, 3);
-    assert.match(sentMessages[2].body, /delivered successfully/);
-    assert.match(sentMessages[2].body, /Thank you for shopping with AyushBasket/);
+    assert.strictEqual(sentMessages.length, 4);
+    assert.match(sentMessages[3].body, /delivered successfully/);
+    assert.match(sentMessages[3].body, /Thank you for shopping with AyushBasket/);
 
     // Duplicate check: second call should be ignored
     const completedDupRes = await smsService.sendOrderCompletedSMS(orderObj, testPhone);
     assert.strictEqual(completedDupRes.message, 'Already sent.');
-    assert.strictEqual(sentMessages.length, 3); // Still 3!
+    assert.strictEqual(sentMessages.length, 4); // Still 4!
   } finally {
     await OrderNotification.destroy({ where: { orderId: testOrderId } });
     resetTwilioClientForTesting();

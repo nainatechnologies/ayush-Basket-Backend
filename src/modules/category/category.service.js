@@ -1,9 +1,19 @@
+'use strict';
+
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Service: Category Service
+ * Purpose: Business logic and database operations for product taxonomy categories
+ */
+
 const { Category, Product } = require('../../models');
 const { Op } = require('sequelize');
 
 const getAllCategories = async () => {
   return await Category.findAll({
-    where: { status: 'active' },
     order: [['name', 'ASC']]
   });
 };
@@ -19,8 +29,7 @@ const createNewCategory = async (data) => {
   return await Category.create({
     name: data.name.trim(),
     description: data.description || '',
-    image: data.image || null,
-    status: 'active'
+    image: data.image || null
   });
 };
 
@@ -34,7 +43,7 @@ const updateExistingCategory = async (id, data) => {
 
   if (data.name !== undefined) category.name = data.name.trim();
   if (data.description !== undefined) category.description = data.description;
-  if (data.status !== undefined) category.status = data.status;
+  if (data.image !== undefined) category.image = data.image;
 
   await category.save();
   return category;

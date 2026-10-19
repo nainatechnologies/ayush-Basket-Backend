@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [product]: product.validation
+ */
+
 const { z } = require('zod');
 
 // Some values might come in as strings due to form-data (FormData)

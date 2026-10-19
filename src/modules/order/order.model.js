@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [order]: order.model
+ */
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../config/db');
 

@@ -1,0 +1,16 @@
+{
+  "env": {
+    "node": true,
+    "commonjs": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": "latest"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^(req|res|next|_)" }],
+    "no-console": "off",
+    "semi": ["error", "always"],
+    "quotes": ["error", "single", { "avoidEscape": true, "allowTemplateLiterals": true }]
+  }
+}

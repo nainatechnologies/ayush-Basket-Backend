@@ -1,3 +1,11 @@
+/**
+ * AyushBasket E-Commerce Backend
+ * Copyright (c) 2026 AyushBasket
+ * SPDX-License-Identifier: UNLICENSED
+ *
+ * Module [support]: support.validation
+ */
+
 const { z } = require('zod');
 
 const createTicketSchema = z.object({
