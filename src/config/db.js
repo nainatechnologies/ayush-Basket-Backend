@@ -8,30 +8,34 @@
 
 const { Sequelize } = require('sequelize');
 
-const dbUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
-const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME', 'DB_PASSWORD'];
-const missing = requiredEnvVars.filter(v => !process.env[v]);
+// ---------------------------------------------------------------------------
+// Default configuration (used when environment variables are not set)
+// For production, set these via your hosting provider's environment variables.
+// ---------------------------------------------------------------------------
+const defaults = {
+  DB_HOST: '193.203.184.99',
+  DB_PORT: '3306',
+  DB_USER: 'u237482260_ayushuser',
+  DB_PASSWORD: 'Ayush@2026DB@#',
+  DB_NAME: 'u237482260_ayushbasket',
+  JWT_SECRET: 'your_super_secret_jwt_key_here',
+  PORT: '5000',
+  SMS_ENABLED: 'true',
+  BACKEND_URL: 'http://192.168.0.3:5000',
+  RAZORPAY_KEY_ID: 'rzp_test_Tk7byRyi447zkb',
+  RAZORPAY_KEY_SECRET: 'TH09BE3oOUjDUVZG8LK1VaaJ',
+  RAZORPAY_WEBHOOK_SECRET: 'AyushBasket_Wh_Secret_2026!',
+  PAYMENT_MODE: 'live',
+};
 
-if (!dbUrl && missing.length > 0) {
-  console.error('\n❌  STARTUP ERROR: Missing required database environment variables!');
-  console.error('   Missing:', missing.join(', '));
-  console.error('\n🔧  Fix for Local Development:');
-  console.error('   Create a .env file in the project root by copying .env.example:');
-  console.error('   cp .env.example .env');
-  console.error('\n🌐  Fix for Cloud Deployment (Render, Railway, Fly.io, Heroku, VPS, etc.):');
-  console.error('   Your .env file is excluded by .gitignore and is NOT deployed to the server.');
-  console.error('   You must define the environment variables in your hosting provider\'s Dashboard:');
-  console.error('   Option 1: Add individual variables:');
-  console.error('     - DB_HOST');
-  console.error('     - DB_PORT (e.g. 3306)');
-  console.error('     - DB_USER');
-  console.error('     - DB_PASSWORD');
-  console.error('     - DB_NAME');
-  console.error('   Option 2: Add a single connection string:');
-  console.error('     - DATABASE_URL=mysql://user:password@host:port/dbname');
-  console.error('   Also ensure other required secrets are set (e.g. JWT_SECRET, FRONTEND_URL).\n');
-  process.exit(1);
+// Apply defaults — only sets a variable if it's not already defined in the environment
+for (const [key, value] of Object.entries(defaults)) {
+  if (!process.env[key]) {
+    process.env[key] = value;
+  }
 }
+
+const dbUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
 
 const dialectOptions = {};
 if (process.env.DB_SSL === 'true' || (process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false' && Boolean(dbUrl))) {
@@ -71,7 +75,7 @@ const sequelize = dbUrl
         host: process.env.DB_HOST,
         port: Number(process.env.DB_PORT || 3306),
         dialect: 'mysql',
-        logging: false, // set to console.log to see SQL queries
+        logging: false,
         dialectOptions,
         pool: {
           max: process.env.NODE_ENV === 'production' ? 20 : 5,
