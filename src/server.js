@@ -178,7 +178,10 @@ const start = async () => {
   try {
     // Connect Sequelize & Sync
     await sequelize.authenticate();
-    console.log(`✅  MySQL connected → ${process.env.DB_HOST}:${process.env.DB_PORT} / ${process.env.DB_NAME} via Sequelize`);
+    const connTarget = process.env.DATABASE_URL || process.env.MYSQL_URL
+      ? 'cloud database connection'
+      : `${process.env.DB_HOST}:${process.env.DB_PORT} / ${process.env.DB_NAME}`;
+    console.log(`✅  MySQL connected → ${connTarget} via Sequelize`);
     await syncDB();
 
     // Start Express
