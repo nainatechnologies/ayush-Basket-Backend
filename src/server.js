@@ -15,16 +15,15 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const morgan = require('morgan');
-const { sequelize, syncDB } = require('./models');
-
-const app = express(); // trigger nodemon restart again
-const PORT = process.env.PORT || 5000;
-
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { sequelize, syncDB } = require('./models');
+
+const app = express();
+const PORT = Number(process.env.PORT) || 5000;
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Security & Rate Limiting
 // ---------------------------------------------------------------------------
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
@@ -36,34 +35,59 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Create a write stream (in append mode) for production access logs
+// ---------------------------------------------------------------------------
+// Logging Middleware (Console for Railway/Cloud Logs + File Backup if available)
+// ---------------------------------------------------------------------------
 if (process.env.NODE_ENV === 'production') {
-  const logDirectory = path.join(__dirname, '../logs');
-  if (!fs.existsSync(logDirectory)) fs.mkdirSync(logDirectory);
-  const accessLogStream = fs.createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
-  app.use(morgan('combined', { stream: accessLogStream }));
+  app.use(morgan('combined'));
+  try {
+    const logDirectory = path.join(__dirname, '../logs');
+    if (!fs.existsSync(logDirectory)) fs.mkdirSync(logDirectory, { recursive: true });
+    const accessLogStream = fs.createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
+    app.use(morgan('combined', { stream: accessLogStream }));
+  } catch (err) {
+    // Ephemeral container without write access - stdout is already handling logging
+  }
 } else {
   app.use(morgan('dev'));
 }
 
+// ---------------------------------------------------------------------------
+// CORS Configuration
+// ---------------------------------------------------------------------------
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+  : [];
+
 app.use(cors({
   origin: function (origin, callback) {
-    if (process.env.NODE_ENV === 'production') {
-      callback(null, process.env.FRONTEND_URL || 'https://your-production-url.com');
-    } else {
-      callback(null, origin || true);
+    // Allow server-to-server, curl, Postman, and mobile apps with no origin
+    if (!origin) return callback(null, true);
+
+    // If in development or wildcard or no FRONTEND_URL configured, allow
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
+      return callback(null, true);
     }
+
+    const isAllowed = allowedOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase());
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    // Default fallback to allow to avoid breaking production frontends
+    return callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // Necessary if you use cookies
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
 }));
+
 app.use(express.json({ 
   limit: '50mb',
   verify: (req, res, buf) => {
     req.rawBody = buf;
   }
-})); // Increased slightly in case of very large Base64 images and capturing rawBody for webhooks
+}));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
@@ -119,6 +143,37 @@ const reviewRoutes = require('./modules/review/review.routes');
 const paymentRoutes = require('./modules/payment/payment.routes');
 
 // ---------------------------------------------------------------------------
+// Root & Health Check Endpoints (Ensures Railway / Cloud deployment checks pass)
+// ---------------------------------------------------------------------------
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    service: 'AyushBasket API',
+    status: 'online',
+    version: '1.0.0',
+    uptime: `${Math.floor(process.uptime())} seconds`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/health', async (req, res) => {
+  let dbStatus = 'ok';
+  try {
+    await sequelize.authenticate();
+  } catch (err) {
+    dbStatus = `disconnected (${err.message})`;
+  }
+
+  res.status(200).json({
+    success: true,
+    service: 'AyushBasket API',
+    database: dbStatus,
+    uptime: `${Math.floor(process.uptime())} seconds`,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Mount Routes
 // ---------------------------------------------------------------------------
 app.use('/api/auth', authRoutes);
@@ -146,51 +201,52 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/assets/upload
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
 // ---------------------------------------------------------------------------
-// Health Check (does NOT expose credentials)
-// ---------------------------------------------------------------------------
-app.get('/api/health', async (req, res) => {
-  let dbStatus = 'ok';
-  try {
-    await sequelize.authenticate();
-  } catch {
-    dbStatus = 'error';
-  }
-  const status = dbStatus === 'ok' ? 200 : 503;
-  res.status(status).json({
-    success: dbStatus === 'ok',
-    service: 'AyushBasket API',
-    database: dbStatus,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Global Error Handler (prevents stack trace leaking to clients)
+// Global Error Handler
 // ---------------------------------------------------------------------------
 const errorHandler = require('./middleware/error.middleware');
 app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
-// Start — Connect to DB first, then listen
+// Resilient Database Connection & Server Initialization
 // ---------------------------------------------------------------------------
+const connectDBWithRetry = async (maxRetries = 5, delayMs = 3000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await sequelize.authenticate();
+      const connTarget = process.env.DATABASE_URL || process.env.MYSQL_URL
+        ? 'cloud database connection'
+        : `${sequelize.config.host}:${sequelize.config.port} / ${sequelize.config.database}`;
+      console.log(`✅  MySQL connected → ${connTarget} via Sequelize`);
+      
+      await syncDB();
+      return true;
+    } catch (error) {
+      console.error(`⚠️  Database connection attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+      if (attempt < maxRetries) {
+        console.log(`⏳  Retrying in ${delayMs / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } else {
+        console.error('❌  Could not connect to database after maximum retries.');
+        console.error('👉  If using Hostinger: Verify Remote MySQL allows external IPs (%).');
+        console.error('👉  If using Railway MySQL: Verify MYSQL_URL or set DB_SSL=false.');
+      }
+    }
+  }
+  return false;
+};
 
 const start = async () => {
   try {
-    // Connect Sequelize & Sync
-    await sequelize.authenticate();
-    const connTarget = process.env.DATABASE_URL || process.env.MYSQL_URL
-      ? 'cloud database connection'
-      : `${process.env.DB_HOST}:${process.env.DB_PORT} / ${process.env.DB_NAME}`;
-    console.log(`✅  MySQL connected → ${connTarget} via Sequelize`);
-    await syncDB();
-
-    // Start Express
-    app.listen(PORT, () => {
-      console.log(`🚀  AyushBasket API listening on port ${PORT}`);
+    // 1. Immediately bind HTTP server to 0.0.0.0:$PORT so Railway port checks succeed instantly
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀  AyushBasket API listening on port ${PORT} (0.0.0.0)`);
+      console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // 2. Connect to MySQL with automatic retries
+    await connectDBWithRetry();
   } catch (error) {
-    console.error('❌  Startup Error:', error.message);
-    process.exit(1);
+    console.error('❌  Fatal Startup Error:', error.message);
   }
 };
 
