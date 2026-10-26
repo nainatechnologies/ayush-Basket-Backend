@@ -30,6 +30,22 @@ const protect = (req, res, next) => {
       console.error('[Auth Middleware] Invalid token:', error.message);
       return res.status(401).json({ success: false, message: 'Not authorized, token failed.' });
     }
+  } else if (req.headers.cookie) {
+    const cookieToken = req.headers.cookie
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('token='));
+    if (cookieToken) {
+      try {
+        token = cookieToken.split('=')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        return next();
+      } catch (error) {
+        console.error('[Auth Middleware] Invalid cookie token:', error.message);
+        return res.status(401).json({ success: false, message: 'Not authorized, token failed.' });
+      }
+    }
   }
 
   if (!token) {

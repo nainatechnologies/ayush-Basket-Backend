@@ -88,8 +88,17 @@ const sendRegistrationOtp = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const { user, token } = await authService.loginUser(email, password);
+    const { email, phone, password } = req.body;
+    const identifier = email || phone || req.body.identifier;
+
+    if (!identifier || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email or phone number and password.'
+      });
+    }
+
+    const { user, token } = await authService.loginUser(identifier, password);
 
     const cookieOptions = {
       httpOnly: true,
@@ -110,7 +119,7 @@ const login = async (req, res) => {
       return res.status(error.statusCode).json({ success: false, message: error.message });
     }
     console.error('Error in login:', error);
-    res.status(500).json({ success: false, message: 'Server error during login.' });
+    res.status(500).json({ success: false, message: error.message || 'Server error during login.' });
   }
 };
 

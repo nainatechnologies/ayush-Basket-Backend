@@ -236,19 +236,32 @@ const registerUser = async (data) => {
   return { user: newUser, token };
 };
 
-const loginUser = async (email, password) => {
-  const normalizedEmail = email.toLowerCase().trim();
-  const user = await User.findOne({ where: { email: normalizedEmail, role: 'customer' } });
+const loginUser = async (identifier, password) => {
+  if (!identifier || !password) {
+    const error = new Error('Email or phone number and password are required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let user;
+  const isEmail = String(identifier).includes('@');
+  if (isEmail) {
+    const normalizedEmail = String(identifier).toLowerCase().trim();
+    user = await User.findOne({ where: { email: normalizedEmail, role: 'customer' } });
+  } else {
+    const phoneVariants = getPhoneVariants(String(identifier));
+    user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'customer' } });
+  }
 
   if (!user) {
-    const error = new Error('Invalid email or password.');
+    const error = new Error('Invalid credentials. No account found.');
     error.statusCode = 401;
     throw error;
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    const error = new Error('Invalid email or password.');
+    const error = new Error('Invalid email/phone or password.');
     error.statusCode = 401;
     throw error;
   }

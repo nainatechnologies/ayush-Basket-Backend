@@ -15,6 +15,7 @@ const validate = require('../../middleware/validate.middleware');
 const { createCouponSchema, validateCouponSchema } = require('./coupon.validation');
 
 router.post('/validate', validate(validateCouponSchema), validateCoupon);
+router.get('/', getActiveCoupons);
 router.get('/active', getActiveCoupons);
 router.put('/:id', protect, admin, updateCoupon);
 router.delete('/:id', protect, admin, deleteCoupon);
