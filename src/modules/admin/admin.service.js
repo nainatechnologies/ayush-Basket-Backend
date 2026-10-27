@@ -28,8 +28,23 @@ const createTransporter = () => {
   });
 };
 
-const loginAdmin = async (email, password) => {
-  const user = await User.findOne({ where: { email: email.toLowerCase().trim(), role: 'admin' } });
+const { Op } = require('sequelize');
+
+const loginAdmin = async (identifier, password) => {
+  let user;
+  const isEmail = String(identifier).includes('@');
+  if (isEmail) {
+    user = await User.findOne({ where: { email: String(identifier).toLowerCase().trim(), role: 'admin' } });
+  } else {
+    const raw = String(identifier).trim();
+    const digits = raw.replace(/\D/g, '').slice(-10);
+    const phoneVariants = [raw];
+    if (digits && digits.length === 10) {
+      phoneVariants.push(digits, `+91${digits}`, `91${digits}`, `0${digits}`);
+    }
+    user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'admin' } });
+  }
+
   if (!user) {
     const error = new Error('Invalid admin credentials.');
     error.statusCode = 401;

@@ -5,7 +5,8 @@ const bcrypt = require('bcryptjs');
 const seedAdmin = async () => {
   try {
     const email = 'admin@ayushbasket.com';
-    const password = 'adminpassword123';
+    const password = 'Admin@123';
+    const phone = '7569363718';
     
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -14,6 +15,7 @@ const seedAdmin = async () => {
     if (existingUser) {
       existingUser.password = hashedPassword;
       existingUser.role = 'admin';
+      existingUser.phone = phone;
       await existingUser.save();
       console.log('Admin user updated successfully! Credentials reset.');
     } else {
@@ -21,6 +23,7 @@ const seedAdmin = async () => {
         name: 'Super Admin',
         email: email,
         password: hashedPassword,
+        phone: phone,
         role: 'admin'
       });
       console.log('Admin user created successfully!');

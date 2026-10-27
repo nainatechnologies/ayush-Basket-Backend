@@ -41,23 +41,23 @@ const formatProductOutput = (prod, userWishlistIds = new Set()) => {
   prod.isWishlisted = userWishlistIds.has(prod.id);
   prod.is_wishlisted = prod.isWishlisted;
   prod.in_wishlist = prod.isWishlisted;
-  
+
   prod.category_name = prod.category ? prod.category.name : null;
   prod.category = prod.category_name;
-  
+
   prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
   prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
   prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
-  
+
   prod.imageBase64 = prod.imageUrl;
   prod.image = prod.imageUrl;
   prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
-  
+
   // Add aliases for frontend compatibility
   prod.package_size = prod.packageSize;
   prod.packSize = prod.packageSize;
   prod.pack_size = prod.packageSize;
-  
+
   prod.full_description = prod.fullDescription;
   prod.usage = prod.fullDescription;
   prod.safety_advice = prod.fullDescription;
@@ -182,19 +182,19 @@ const getAdminProductsList = async (filters) => {
     const prod = p.toJSON();
     prod.category_name = prod.category ? prod.category.name : null;
     prod.category = prod.category_name;
-    
+
     prod.imageUrl = buildImageSource(prod.imageUrl, prod.imageMimeType);
     prod.imageUrl2 = buildImageSource(prod.imageUrl2, prod.image2MimeType);
     prod.imageUrl3 = buildImageSource(prod.imageUrl3, prod.image3MimeType);
-    
+
     prod.imageBase64 = prod.imageUrl;
     prod.image = prod.imageUrl;
     prod.images = [prod.imageUrl, prod.imageUrl2, prod.imageUrl3].filter(Boolean);
-    
+
     prod.package_size = prod.packageSize;
     prod.packSize = prod.packageSize;
     prod.pack_size = prod.packageSize;
-    
+
     prod.full_description = prod.fullDescription;
     prod.usage = prod.fullDescription;
     prod.safety_advice = prod.fullDescription;
@@ -258,10 +258,17 @@ const createNewProduct = async (data, images) => {
   const transaction = await sequelize.transaction();
   try {
     const actual_category_id = await resolveCategoryId(data.category_id);
-    const discountPct = parseFloat(data.discount_percentage) || 0;
-    
+    const actualDiscount = data.discountPercentage !== undefined ? data.discountPercentage : data.discount_percentage;
+    const actualCostPrice = data.costPrice !== undefined ? data.costPrice : data.cost_price;
+    let discountPct = parseFloat(actualDiscount) || 0;
+
     let calculatedOfferPrice = parseFloat(data.price);
-    if (discountPct > 0) {
+    if (data.offerPrice !== undefined && !isNaN(parseFloat(data.offerPrice)) && parseFloat(data.offerPrice) > 0) {
+      calculatedOfferPrice = parseFloat(data.offerPrice);
+      if (discountPct === 0 && calculatedOfferPrice < parseFloat(data.price)) {
+        discountPct = Math.round(((parseFloat(data.price) - calculatedOfferPrice) / parseFloat(data.price)) * 100);
+      }
+    } else if (discountPct > 0) {
       calculatedOfferPrice = parseFloat(data.price) - (parseFloat(data.price) * discountPct / 100);
     }
 
@@ -269,8 +276,8 @@ const createNewProduct = async (data, images) => {
     if (isNaN(initialStock) || initialStock < 0) initialStock = 0;
 
     let initialStatus = data.status ? String(data.status).trim() : 'In Stock';
-    const isOutOfStockRequested = initialStatus.toLowerCase() === 'out of stock' || 
-      initialStatus.toLowerCase() === 'out_of_stock' || 
+    const isOutOfStockRequested = initialStatus.toLowerCase() === 'out of stock' ||
+      initialStatus.toLowerCase() === 'out_of_stock' ||
       initialStock === 0;
 
     if (isOutOfStockRequested) {
@@ -287,7 +294,7 @@ const createNewProduct = async (data, images) => {
       price: parseFloat(data.price),
       offerPrice: calculatedOfferPrice,
       discountPercentage: discountPct,
-      costPrice: parseFloat(data.cost_price) || 0,
+      costPrice: parseFloat(actualCostPrice) || 0,
       expense: parseFloat(data.expense) || 0,
       stock: initialStock,
       categoryId: actual_category_id,
@@ -308,7 +315,7 @@ const createNewProduct = async (data, images) => {
       metaDescription: data.meta_description || null,
       returnPolicy: data.returnPolicy || 'Easy Return',
     }, { transaction });
-    
+
     await transaction.commit();
     return product;
   } catch (err) {
@@ -343,12 +350,18 @@ const updateExistingProduct = async (id, data, images) => {
     prod.description = data.description !== undefined ? data.description : prod.description;
     prod.fullDescription = data.full_description !== undefined ? data.full_description : (data.fullDescription !== undefined ? data.fullDescription : prod.fullDescription);
     prod.price = newPrice;
-    prod.discountPercentage = actualDiscount !== undefined ? parseFloat(actualDiscount) : prod.discountPercentage;
-    if (prod.discountPercentage > 0) {
-      prod.offerPrice = prod.price - (prod.price * prod.discountPercentage / 100);
+    let disc = actualDiscount !== undefined ? parseFloat(actualDiscount) : prod.discountPercentage;
+    if (data.offerPrice !== undefined && !isNaN(parseFloat(data.offerPrice)) && parseFloat(data.offerPrice) < newPrice) {
+      prod.offerPrice = parseFloat(data.offerPrice);
+      if (!disc || disc === 0) {
+        disc = Math.round(((newPrice - prod.offerPrice) / newPrice) * 100);
+      }
+    } else if (disc > 0) {
+      prod.offerPrice = newPrice - (newPrice * disc / 100);
     } else {
-      prod.offerPrice = prod.price;
+      prod.offerPrice = newPrice;
     }
+    prod.discountPercentage = disc;
     prod.costPrice = actualCostPrice !== undefined ? parseFloat(actualCostPrice) : prod.costPrice;
     prod.expense = data.expense !== undefined ? parseFloat(data.expense) : prod.expense;
 
@@ -401,7 +414,7 @@ const updateExistingProduct = async (id, data, images) => {
     prod.potency = data.potency !== undefined ? data.potency : prod.potency;
     prod.composition = data.composition !== undefined ? data.composition : prod.composition;
     prod.dosage = data.dosage !== undefined ? data.dosage : prod.dosage;
-    
+
     const actualMetaTag = data.metaTag !== undefined ? data.metaTag : data.meta_tag;
     const actualProductTag = data.productTag !== undefined ? data.productTag : data.product_tag;
     prod.metaTag = actualMetaTag !== undefined ? actualMetaTag : prod.metaTag;
@@ -429,13 +442,13 @@ const toggleProductVisibility = async (id) => {
     error.statusCode = 404;
     throw error;
   }
-  
+
   if (product.status === 'Inactive' || product.status === 'hidden' || product.status === 'inactive') {
     product.status = Number(product.stock) > 0 ? 'In Stock' : 'Out of Stock';
   } else {
     product.status = 'Inactive';
   }
-  
+
   await product.save();
   return product;
 };
@@ -459,7 +472,7 @@ const updateProductStock = async (id, stock) => {
     product.stock = 0;
     product.status = 'Out of Stock';
   }
-  
+
   await product.save();
   return product;
 };

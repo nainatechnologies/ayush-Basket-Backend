@@ -23,8 +23,9 @@ const addOrderSchema = z.object({
     paymentMethod: z.string().optional(),
     couponCode: z.string().optional(),
     paymentProof: z.string().optional(),
-    transactionId: z.string().optional()
-  })
+    transactionId: z.string().optional(),
+    total_amount: z.union([z.number(), z.string()]).optional()
+  }).passthrough()
 });
 
 const updateOrderStatusSchema = z.object({

@@ -33,9 +33,17 @@ const sendRegistrationOtpSchema = z.object({
 
 const loginSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email address'),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    identifier: z.string().optional(),
     password: z.string().min(1, 'Password is required')
-  })
+  }).refine(
+    (data) => Boolean((data.email && data.email.trim()) || (data.phone && data.phone.trim()) || (data.identifier && data.identifier.trim())),
+    {
+      message: 'Please provide email or phone number',
+      path: ['email']
+    }
+  )
 });
 
 const forgotPasswordSchema = z.object({

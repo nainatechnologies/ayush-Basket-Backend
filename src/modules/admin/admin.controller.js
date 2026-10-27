@@ -16,12 +16,13 @@ const adminService = require('./admin.service');
 // @access  Public
 const adminLogin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password.' });
+    const { email, phone, identifier: rawId, password } = req.body;
+    const identifier = email || phone || rawId;
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide email or phone number and password.' });
     }
 
-    const result = await adminService.loginAdmin(email, password);
+    const result = await adminService.loginAdmin(identifier, password);
 
     const cookieOptions = {
       httpOnly: true,

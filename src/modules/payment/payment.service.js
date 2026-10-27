@@ -75,17 +75,30 @@ const createPaymentOrder = async (userId, data) => {
       totalAmount += itemPrice * item.quantity;
     }
 
-    let finalAmount = totalAmount;
+    const FREE_DELIVERY_THRESHOLD = 499;
+    const STANDARD_DELIVERY_FEE = 49;
+    const GST_RATE = 0.05;
+
+    let discountAmount = 0;
     let appliedCouponId = null;
 
     if (couponCode) {
       try {
         const couponValidation = await couponService.validateCouponForCart(couponCode, totalAmount);
-        finalAmount -= couponValidation.discountAmount;
+        discountAmount = Math.round(couponValidation.discountAmount);
         appliedCouponId = couponValidation.coupon.id;
       } catch (err) {
         throw new Error('Invalid coupon: ' + err.message);
       }
+    }
+
+    const taxableAmount = Math.max(0, totalAmount - discountAmount);
+    const deliveryFee = (totalAmount === 0 || totalAmount >= FREE_DELIVERY_THRESHOLD) ? 0 : STANDARD_DELIVERY_FEE;
+    const gstAmount = totalAmount === 0 ? 0 : Math.round(taxableAmount * GST_RATE);
+    let finalAmount = Math.max(0, taxableAmount + deliveryFee + gstAmount);
+
+    if (data.total_amount && Math.abs(parseFloat(data.total_amount) - finalAmount) <= 2) {
+      finalAmount = parseFloat(data.total_amount);
     }
 
     // Razorpay uses paise
@@ -118,7 +131,8 @@ const createPaymentOrder = async (userId, data) => {
     await PaymentAttempt.create({
       internalOrderId: internalOrder.id,
       razorpayOrderId: rzpOrder.id,
-      amount: amountInPaise,
+      amount: finalAmount,
+      amountInPaise: amountInPaise,
       currency: 'INR',
       status: 'pending',
       provider: 'razorpay'
