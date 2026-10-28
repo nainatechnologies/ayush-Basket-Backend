@@ -21,6 +21,7 @@ const database = process.env.DB_NAME || process.env.MYSQLDATABASE || 'u237482260
 const defaults = {
   JWT_SECRET: 'your_super_secret_jwt_key_here',
   SMS_ENABLED: 'true',
+  FRONTEND_URL: 'https://ayushbasket.nainatechnologies.in',
   BACKEND_URL: 'https://ayush-basket-backend-production.up.railway.app',
   RAZORPAY_KEY_ID: 'rzp_test_Tk7byRyi447zkb',
   RAZORPAY_KEY_SECRET: 'TH09BE3oOUjDUVZG8LK1VaaJ',

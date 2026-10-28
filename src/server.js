@@ -55,21 +55,34 @@ if (process.env.NODE_ENV === 'production') {
 // ---------------------------------------------------------------------------
 // CORS Configuration
 // ---------------------------------------------------------------------------
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
-  : [];
+const defaultOrigins = [
+  'https://ayushbasket.nainatechnologies.in',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
+const allowedOrigins = [
+  ...defaultOrigins,
+  ...(process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+    : [])
+];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow server-to-server, curl, Postman, and mobile apps with no origin
     if (!origin) return callback(null, true);
 
-    // If in development or wildcard or no FRONTEND_URL configured, allow
-    if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
+    // If in development or wildcard, allow
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*')) {
       return callback(null, true);
     }
 
-    const isAllowed = allowedOrigins.some(allowed => origin.toLowerCase() === allowed.toLowerCase());
+    const lowerOrigin = origin.toLowerCase();
+    const isAllowed = allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase())
+      || lowerOrigin.endsWith('.nainatechnologies.in');
+
     if (isAllowed) {
       return callback(null, true);
     }
