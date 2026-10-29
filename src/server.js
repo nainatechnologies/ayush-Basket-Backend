@@ -55,44 +55,89 @@ if (process.env.NODE_ENV === 'production') {
 // ---------------------------------------------------------------------------
 // CORS Configuration
 // ---------------------------------------------------------------------------
-const defaultOrigins = [
+
+/**
+ * Origins that are always permitted regardless of environment.
+ * Add additional production domains to the FRONTEND_URL environment variable
+ * (comma-separated) rather than editing this constant.
+ */
+const HARDCODED_ORIGINS = [
   'https://ayushbasket.nainatechnologies.in',
   'http://localhost:5173',
   'http://localhost:3000',
-  'http://localhost:5000'
+  'http://localhost:5000',
 ];
 
-const allowedOrigins = [
-  ...defaultOrigins,
-  ...(process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
-    : [])
-];
+/**
+ * Build the full allowed-origin list at start-up time.
+ * FRONTEND_URL may contain one or more comma-separated origins, e.g.
+ *   FRONTEND_URL=https://ayushbasket.nainatechnologies.in,https://admin.example.com
+ */
+const buildAllowedOrigins = () => {
+  const fromEnv = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL
+        .split(',')
+        .map(u => u.trim().replace(/\/$/, ''))
+        .filter(Boolean)
+    : [];
+  // Deduplicate; preserve insertion order (hardcoded first)
+  return [...new Set([...HARDCODED_ORIGINS, ...fromEnv])];
+};
+
+const allowedOrigins = buildAllowedOrigins();
+
+/**
+ * CORS origin callback.
+ *
+ * Rules (in priority order):
+ *  1. No Origin header (server-to-server, curl, Postman, native mobile) → allow.
+ *  2. Development mode → allow every browser origin so local dev is frictionless.
+ *  3. Production → allow only origins in allowedOrigins or any *.nainatechnologies.in sub-domain.
+ *  4. Any other origin in production → reject with a descriptive CORS error.
+ *
+ * We always pass the request's own `origin` value (not `true`) to the callback
+ * so that the reflected `Access-Control-Allow-Origin` header is an exact, explicit
+ * origin string rather than a wildcard, which is required when credentials:true.
+ */
+const corsOriginFn = (origin, callback) => {
+  // 1. No Origin header – non-browser client
+  if (!origin) return callback(null, true);
+
+  // 2. Development – allow all browser origins
+  if (process.env.NODE_ENV !== 'production') {
+    return callback(null, origin);
+  }
+
+  // 3. Production allow-list check
+  const lowerOrigin = origin.toLowerCase();
+  const isAllowed =
+    allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase()) ||
+    lowerOrigin.endsWith('.nainatechnologies.in');
+
+  if (isAllowed) {
+    return callback(null, origin);   // reflect the exact request origin
+  }
+
+  // 4. Blocked – return a proper CORS error (does NOT send the placeholder)
+  return callback(new Error(`CORS: origin '${origin}' is not allowed.`));
+};
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow server-to-server, curl, Postman, and mobile apps with no origin
-    if (!origin) return callback(null, true);
-
-    // If in development or wildcard, allow
-    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*')) {
-      return callback(null, true);
-    }
-
-    const lowerOrigin = origin.toLowerCase();
-    const isAllowed = allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase())
-      || lowerOrigin.endsWith('.nainatechnologies.in');
-
-    if (isAllowed) {
-      return callback(null, true);
-    }
-
-    // Default fallback to allow to avoid breaking production frontends
-    return callback(null, true);
-  },
+  origin: corsOriginFn,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   credentials: true,
+  preflightContinue: false,   // cors() handles OPTIONS and ends the response
+  optionsSuccessStatus: 204,  // some legacy browsers choke on 200 for OPTIONS
+}));
+
+// Ensure OPTIONS pre-flight requests are handled before any other middleware/route
+app.options('*', cors({
+  origin: corsOriginFn,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 204,
 }));
 
 app.use(express.json({ 
