@@ -127,17 +127,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   credentials: true,
-  preflightContinue: false,   // cors() handles OPTIONS and ends the response
-  optionsSuccessStatus: 204,  // some legacy browsers choke on 200 for OPTIONS
-}));
-
-// Ensure OPTIONS pre-flight requests are handled before any other middleware/route
-app.options('*', cors({
-  origin: corsOriginFn,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: true,
-  optionsSuccessStatus: 204,
+  preflightContinue: false,   // Automatically responds to OPTIONS preflight requests and ends response
+  optionsSuccessStatus: 204,  // Legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
 app.use(express.json({ 
