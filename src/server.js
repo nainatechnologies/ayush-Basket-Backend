@@ -57,75 +57,93 @@ if (process.env.NODE_ENV === 'production') {
 // ---------------------------------------------------------------------------
 
 /**
- * Origins that are always permitted regardless of environment.
- * Add additional production domains to the FRONTEND_URL environment variable
- * (comma-separated) rather than editing this constant.
+ * Production origins permitted by default.
+ * Additional production domains can be configured via the FRONTEND_URL or
+ * CORS_ORIGIN environment variable (comma-separated).
  */
-const HARDCODED_ORIGINS = [
+const DEFAULT_PRODUCTION_ORIGINS = [
   'https://ayushbasket.nainatechnologies.in',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:5000',
 ];
 
 /**
- * Build the full allowed-origin list at start-up time.
- * FRONTEND_URL may contain one or more comma-separated origins, e.g.
- *   FRONTEND_URL=https://ayushbasket.nainatechnologies.in,https://admin.example.com
+ * Development-only origins permitted during local development.
+ * Kept strictly out of production to avoid exposing localhost in production.
+ */
+const DEV_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5000',
+];
+
+/**
+ * Build the allowed origins list from environment and defaults.
+ * In production, development origins are strictly excluded.
  */
 const buildAllowedOrigins = () => {
-  const fromEnv = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL
+  const envOrigins = (process.env.FRONTEND_URL || process.env.CORS_ORIGIN)
+    ? (process.env.FRONTEND_URL || process.env.CORS_ORIGIN)
         .split(',')
         .map(u => u.trim().replace(/\/$/, ''))
         .filter(Boolean)
     : [];
-  // Deduplicate; preserve insertion order (hardcoded first)
-  return [...new Set([...HARDCODED_ORIGINS, ...fromEnv])];
+
+  const baseOrigins = process.env.NODE_ENV === 'production'
+    ? DEFAULT_PRODUCTION_ORIGINS
+    : [...DEFAULT_PRODUCTION_ORIGINS, ...DEV_ORIGINS];
+
+  return [...new Set([...baseOrigins, ...envOrigins])];
 };
 
 const allowedOrigins = buildAllowedOrigins();
 
 /**
- * CORS origin callback.
+ * CORS origin validator callback.
  *
- * Rules (in priority order):
- *  1. No Origin header (server-to-server, curl, Postman, native mobile) → allow.
- *  2. Development mode → allow every browser origin so local dev is frictionless.
- *  3. Production → allow only origins in allowedOrigins or any *.nainatechnologies.in sub-domain.
- *  4. Any other origin in production → reject with a descriptive CORS error.
+ * Rules:
+ *  1. Non-browser clients (no Origin header: curl, Postman, backend tasks) → allow.
+ *  2. In development (NODE_ENV !== 'production') → allow localhost and local dev origins.
+ *  3. In production → allow exact origins in allowedOrigins or *.nainatechnologies.in sub-domains.
+ *  4. Reject any unauthorized origins with an explicit CORS rejection error.
  *
- * We always pass the request's own `origin` value (not `true`) to the callback
- * so that the reflected `Access-Control-Allow-Origin` header is an exact, explicit
- * origin string rather than a wildcard, which is required when credentials:true.
+ * Always echoes the exact request origin (never '*' when credentials: true).
  */
 const corsOriginFn = (origin, callback) => {
-  // 1. No Origin header – non-browser client
+  // 1. Non-browser client
   if (!origin) return callback(null, true);
 
-  // 2. Development – allow all browser origins
+  const lowerOrigin = origin.toLowerCase();
+
+  // 2. Development mode – allow localhost and local dev origins
   if (process.env.NODE_ENV !== 'production') {
-    return callback(null, origin);
+    if (
+      DEV_ORIGINS.some(d => lowerOrigin === d.toLowerCase()) ||
+      lowerOrigin.startsWith('http://localhost:') ||
+      lowerOrigin.startsWith('http://127.0.0.1:')
+    ) {
+      return callback(null, origin);
+    }
   }
 
   // 3. Production allow-list check
-  const lowerOrigin = origin.toLowerCase();
   const isAllowed =
     allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase()) ||
     lowerOrigin.endsWith('.nainatechnologies.in');
 
   if (isAllowed) {
-    return callback(null, origin);   // reflect the exact request origin
+    return callback(null, origin);
   }
 
-  // 4. Blocked – return a proper CORS error (does NOT send the placeholder)
+  // 4. Block unauthorized origin
   return callback(new Error(`CORS: origin '${origin}' is not allowed.`));
 };
 
 app.use(cors({
   origin: corsOriginFn,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true,
   preflightContinue: false,   // Automatically responds to OPTIONS preflight requests and ends response
   optionsSuccessStatus: 204,  // Legacy browsers (IE11, various SmartTVs) choke on 204

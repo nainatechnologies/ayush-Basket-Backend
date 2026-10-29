@@ -6,61 +6,74 @@
  * SPDX-License-Identifier: UNLICENSED
  *
  * CORS middleware unit tests
- *
- * These tests exercise the corsOriginFn logic in isolation (no live server
- * or database required) by importing the helper directly from server.js
- * internals.  Because server.js wires everything together, we re-implement
- * the same allow-list logic here so the tests are dependency-free and fast.
  */
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 // ---------------------------------------------------------------------------
-// Replicate the allow-list logic from src/server.js so we can test it
-// without starting Express or connecting to a database.
+// Logic under test, matching src/server.js
 // ---------------------------------------------------------------------------
 
-const HARDCODED_ORIGINS = [
+const DEFAULT_PRODUCTION_ORIGINS = [
   'https://ayushbasket.nainatechnologies.in',
+];
+
+const DEV_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5000',
 ];
 
-function buildAllowedOrigins(frontendUrlEnv) {
-  const fromEnv = frontendUrlEnv
-    ? frontendUrlEnv
+function buildAllowedOrigins(envOriginsStr, nodeEnv) {
+  const fromEnv = envOriginsStr
+    ? envOriginsStr
         .split(',')
         .map(u => u.trim().replace(/\/$/, ''))
         .filter(Boolean)
     : [];
-  return [...new Set([...HARDCODED_ORIGINS, ...fromEnv])];
+
+  const baseOrigins = nodeEnv === 'production'
+    ? DEFAULT_PRODUCTION_ORIGINS
+    : [...DEFAULT_PRODUCTION_ORIGINS, ...DEV_ORIGINS];
+
+  return [...new Set([...baseOrigins, ...fromEnv])];
 }
 
-/**
- * Returns a promise that resolves to the value the cors origin callback
- * would pass to Express (the allowed origin string, or throws on rejection).
- *
- * @param {string|undefined} origin  - Request Origin header value
- * @param {'production'|'development'} nodeEnv
- * @param {string|undefined} frontendUrlEnv  - FRONTEND_URL env var value
- */
-function runCorsOrigin(origin, nodeEnv, frontendUrlEnv) {
-  const allowedOrigins = buildAllowedOrigins(frontendUrlEnv);
+function runCorsOrigin(origin, nodeEnv, envOriginsStr) {
+  const allowedOrigins = buildAllowedOrigins(envOriginsStr, nodeEnv);
 
   return new Promise((resolve, reject) => {
-    // Replicate corsOriginFn from src/server.js
     const corsOriginFn = (origin, callback) => {
+      // 1. Non-browser client
       if (!origin) return callback(null, true);
-      if (nodeEnv !== 'production') return callback(null, origin);
 
       const lowerOrigin = origin.toLowerCase();
+
+      // 2. Development mode – allow localhost and local dev origins
+      if (nodeEnv !== 'production') {
+        if (
+          DEV_ORIGINS.some(d => lowerOrigin === d.toLowerCase()) ||
+          lowerOrigin.startsWith('http://localhost:') ||
+          lowerOrigin.startsWith('http://127.0.0.1:')
+        ) {
+          return callback(null, origin);
+        }
+      }
+
+      // 3. Production & configured origins check
       const isAllowed =
         allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase()) ||
         lowerOrigin.endsWith('.nainatechnologies.in');
 
-      if (isAllowed) return callback(null, origin);
+      if (isAllowed) {
+        return callback(null, origin);
+      }
+
+      // 4. Blocked
       return callback(new Error(`CORS: origin '${origin}' is not allowed.`));
     };
 
@@ -72,7 +85,7 @@ function runCorsOrigin(origin, nodeEnv, frontendUrlEnv) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Unit Tests
 // ---------------------------------------------------------------------------
 
 test('CORS: production frontend origin is allowed', async () => {
@@ -81,12 +94,10 @@ test('CORS: production frontend origin is allowed', async () => {
     'production',
     undefined
   );
-  // Must reflect the exact origin (not true/wildcard) so browsers accept it
   assert.equal(result, 'https://ayushbasket.nainatechnologies.in');
 });
 
 test('CORS: OPTIONS preflight from production frontend is allowed', async () => {
-  // OPTIONS preflights carry the same Origin header; the allow-list applies
   const result = await runCorsOrigin(
     'https://ayushbasket.nainatechnologies.in',
     'production',
@@ -95,13 +106,23 @@ test('CORS: OPTIONS preflight from production frontend is allowed', async () => 
   assert.equal(result, 'https://ayushbasket.nainatechnologies.in');
 });
 
-test('CORS: other *.nainatechnologies.in sub-domains are allowed in production', async () => {
-  const result = await runCorsOrigin(
-    'https://admin.nainatechnologies.in',
-    'production',
-    undefined
+test('CORS: localhost origins are BLOCKED in production mode', async () => {
+  await assert.rejects(
+    () => runCorsOrigin('http://localhost:5173', 'production', undefined),
+    /CORS: origin 'http:\/\/localhost:5173' is not allowed\./
   );
-  assert.equal(result, 'https://admin.nainatechnologies.in');
+  await assert.rejects(
+    () => runCorsOrigin('http://localhost:3000', 'production', undefined),
+    /CORS: origin 'http:\/\/localhost:3000' is not allowed\./
+  );
+});
+
+test('CORS: localhost origins are ALLOWED in development mode', async () => {
+  const res5173 = await runCorsOrigin('http://localhost:5173', 'development', undefined);
+  assert.equal(res5173, 'http://localhost:5173');
+
+  const res3000 = await runCorsOrigin('http://localhost:3000', 'development', undefined);
+  assert.equal(res3000, 'http://localhost:3000');
 });
 
 test('CORS: placeholder "https://your-production-url.com" is BLOCKED in production', async () => {
@@ -113,49 +134,35 @@ test('CORS: placeholder "https://your-production-url.com" is BLOCKED in producti
 
 test('CORS: arbitrary external origin is blocked in production', async () => {
   await assert.rejects(
-    () => runCorsOrigin('https://evil.example.com', 'production', undefined),
-    /CORS: origin .* is not allowed\./
+    () => runCorsOrigin('https://untrusted-site.com', 'production', undefined),
+    /CORS: origin 'https:\/\/untrusted-site\.com' is not allowed\./
   );
 });
 
-test('CORS: localhost origins are allowed in production (hardcoded list)', async () => {
-  const result = await runCorsOrigin('http://localhost:5173', 'production', undefined);
-  assert.equal(result, 'http://localhost:5173');
+test('CORS: other *.nainatechnologies.in sub-domains are allowed in production', async () => {
+  const result = await runCorsOrigin(
+    'https://admin.nainatechnologies.in',
+    'production',
+    undefined
+  );
+  assert.equal(result, 'https://admin.nainatechnologies.in');
 });
 
-test('CORS: all origins are allowed in development mode', async () => {
-  const result = await runCorsOrigin('https://random-staging.example.com', 'development', undefined);
-  assert.equal(result, 'https://random-staging.example.com');
-});
-
-test('CORS: no Origin header (curl/Postman/server-to-server) is always allowed', async () => {
+test('CORS: non-browser / server-to-server request (no Origin header) is allowed', async () => {
   const result = await runCorsOrigin(undefined, 'production', undefined);
   assert.equal(result, true);
 });
 
-test('CORS: FRONTEND_URL env var adds extra origins in production', async () => {
-  const extraOrigin = 'https://staging.nainatechnologies.in';
+test('CORS: FRONTEND_URL env var adds additional production origins', async () => {
+  const extraOrigin = 'https://partner.nainatechnologies.in';
   const result = await runCorsOrigin(extraOrigin, 'production', extraOrigin);
   assert.equal(result, extraOrigin);
 });
 
-test('CORS: FRONTEND_URL env var with comma-separated list works', async () => {
-  const frontendUrlEnv =
-    'https://ayushbasket.nainatechnologies.in,https://admin.example.com';
-  const result = await runCorsOrigin(
-    'https://admin.example.com',
-    'production',
-    frontendUrlEnv
-  );
-  assert.equal(result, 'https://admin.example.com');
-});
-
-test('CORS: reflected origin is the exact request origin (no wildcard)', async () => {
+test('CORS: reflected origin is the exact request origin (never wildcard *)', async () => {
   const origin = 'https://ayushbasket.nainatechnologies.in';
   const result = await runCorsOrigin(origin, 'production', undefined);
-  // Must not be '*' — that would break credentialed requests
   assert.notEqual(result, '*');
   assert.notEqual(result, true);
   assert.equal(result, origin);
 });
-

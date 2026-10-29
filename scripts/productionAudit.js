@@ -110,17 +110,12 @@ async function runProductionAudit() {
   const testSubdomain = 'https://admin.nainatechnologies.in';
   const disallowedOrigin = 'https://malicious-site.com';
   const placeholderOrigin = 'https://your-production-url.com';
+  const localhostOrigin = 'http://localhost:5173';
 
-  const HARDCODED_ORIGINS = [
-    'https://ayushbasket.nainatechnologies.in',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:5000'
-  ];
-
+  const DEFAULT_PRODUCTION_ORIGINS = ['https://ayushbasket.nainatechnologies.in'];
   const allowedOrigins = [
     ...new Set([
-      ...HARDCODED_ORIGINS,
+      ...DEFAULT_PRODUCTION_ORIGINS,
       ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()) : [])
     ])
   ];
@@ -135,6 +130,7 @@ async function runProductionAudit() {
   report('Subdomain: ' + testSubdomain, isOriginAllowed(testSubdomain), 'Allowed');
   report('Blocked Origin: ' + disallowedOrigin, !isOriginAllowed(disallowedOrigin), 'Blocked');
   report('Placeholder Origin: ' + placeholderOrigin, !isOriginAllowed(placeholderOrigin), 'Blocked');
+  report('Localhost in Production: ' + localhostOrigin, !isOriginAllowed(localhostOrigin), 'Blocked');
 
   // ----------------------------------------------------
   // Check 5: Services & Integrations
