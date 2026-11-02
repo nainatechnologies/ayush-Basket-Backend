@@ -2,18 +2,20 @@
 
 /**
  * AyushBasket E-Commerce Backend
- * Copyright (c) 2026 AyushBasket
- * SPDX-License-Identifier: UNLICENSED
- *
- * Application entry point and HTTP server initialization
+ * Application entry point and HTTP server initialization.
  */
 
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+const path = require('path');
+const fs = require('fs');
+
+const envPath = fs.existsSync(path.resolve(__dirname, '../.env'))
+  ? path.resolve(__dirname, '../.env')
+  : path.resolve(__dirname, '.env');
+
+require('dotenv').config({ path: envPath });
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -23,190 +25,185 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // ---------------------------------------------------------------------------
-// Security & Rate Limiting
+// CORS
+// Allow only the deployed storefront/admin domains and explicitly configured
+// origins. FRONTEND_URL and CORS_ORIGIN may contain comma-separated origins.
 // ---------------------------------------------------------------------------
+
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://ayushbasket.nainatechnologies.in',
+  'https://ayushadmin.nainatechnologies.in',
+  'https://ayushbasket.com',
+  'https://www.ayushbasket.com'
+];
+
+const configuredOrigins = [
+  process.env.FRONTEND_URL || '',
+  process.env.CORS_ORIGIN || ''
+]
+  .join(',')
+  .split(',')
+  .map(value => value.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const allowedOrigins = new Set(
+  [...DEFAULT_ALLOWED_ORIGINS, ...configuredOrigins]
+    .map(value => value.toLowerCase())
+);
+
+const corsOptions = {
+  origin(origin, callback) {
+    // Requests without an Origin header (for example, curl or server-to-server)
+    // are not browser cross-origin requests.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const lower = origin.toLowerCase();
+    if (
+      allowedOrigins.has(lower) ||
+      lower.endsWith('.nainatechnologies.in') ||
+      lower.endsWith('.ayushbasket.com') ||
+      lower.includes('ayushbasket') ||
+      (process.env.NODE_ENV !== 'production' && (lower.startsWith('http://localhost:') || lower.startsWith('http://127.0.0.1:')))
+    ) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS] Rejected origin: ${origin}`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  optionsSuccessStatus: 204
+};
+
+// Register CORS before rate limiting, body parsing, and API routes.
+// The cors middleware responds to browser OPTIONS preflight requests.
+app.use(cors(corsOptions));
+
+// ---------------------------------------------------------------------------
+// Security and rate limiting
+// ---------------------------------------------------------------------------
+
 app.use(helmet());
-app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
+app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // limit each IP to 2000 requests per windowMs
-  message: { success: false, message: 'Too many requests, please try again later.' }
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  }
 });
-app.use('/api', limiter);
+
+app.use('/api', apiLimiter);
 
 // ---------------------------------------------------------------------------
-// Logging Middleware (Console for Railway/Cloud Logs + File Backup if available)
+// Request logging
 // ---------------------------------------------------------------------------
+
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
+
   try {
     const logDirectory = path.join(__dirname, '../logs');
-    if (!fs.existsSync(logDirectory)) fs.mkdirSync(logDirectory, { recursive: true });
-    const accessLogStream = fs.createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
+    fs.mkdirSync(logDirectory, { recursive: true });
+
+    const accessLogStream = fs.createWriteStream(
+      path.join(logDirectory, 'access.log'),
+      { flags: 'a' }
+    );
+
     app.use(morgan('combined', { stream: accessLogStream }));
-  } catch (err) {
-    // Ephemeral container without write access - stdout is already handling logging
+  } catch (error) {
+    console.warn('[LOGGING] File logging unavailable; using console logging.');
   }
 } else {
   app.use(morgan('dev'));
 }
 
 // ---------------------------------------------------------------------------
-// CORS Configuration
+// Body parsing
 // ---------------------------------------------------------------------------
 
-/**
- * Production origins permitted by default.
- * Additional production domains can be configured via the FRONTEND_URL or
- * CORS_ORIGIN environment variable (comma-separated).
- */
-const DEFAULT_PRODUCTION_ORIGINS = [
-  'https://ayushbasket.com',
-  'https://www.ayushbasket.com',
-  'http://ayushbasket.com',
-  'http://www.ayushbasket.com',
-  'https://ayushbasket.nainatechnologies.in',
-];
-
-/**
- * Development-only origins permitted during local development.
- * Kept strictly out of production to avoid exposing localhost in production.
- */
-const DEV_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:5000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5000',
-];
-
-/**
- * Build the allowed origins list from environment and defaults.
- * In production, development origins are strictly excluded.
- */
-const buildAllowedOrigins = () => {
-  const envOrigins = (process.env.FRONTEND_URL || process.env.CORS_ORIGIN)
-    ? (process.env.FRONTEND_URL || process.env.CORS_ORIGIN)
-        .split(',')
-        .map(u => u.trim().replace(/\/$/, ''))
-        .filter(Boolean)
-    : [];
-
-  const baseOrigins = process.env.NODE_ENV === 'production'
-    ? DEFAULT_PRODUCTION_ORIGINS
-    : [...DEFAULT_PRODUCTION_ORIGINS, ...DEV_ORIGINS];
-
-  return [...new Set([...baseOrigins, ...envOrigins])];
-};
-
-const allowedOrigins = buildAllowedOrigins();
-
-/**
- * CORS origin validator callback.
- *
- * Rules:
- *  1. Non-browser clients (no Origin header: curl, Postman, backend tasks) → allow.
- *  2. In development (NODE_ENV !== 'production') → allow localhost and local dev origins.
- *  3. In production → allow exact origins in allowedOrigins or *.nainatechnologies.in sub-domains.
- *  4. Reject any unauthorized origins with an explicit CORS rejection error.
- *
- * Always echoes the exact request origin (never '*' when credentials: true).
- */
-const corsOriginFn = (origin, callback) => {
-  // 1. Non-browser client
-  if (!origin) return callback(null, true);
-
-  const lowerOrigin = origin.toLowerCase();
-
-  // 2. Development mode – allow localhost and local dev origins
-  if (process.env.NODE_ENV !== 'production') {
-    if (
-      DEV_ORIGINS.some(d => lowerOrigin === d.toLowerCase()) ||
-      lowerOrigin.startsWith('http://localhost:') ||
-      lowerOrigin.startsWith('http://127.0.0.1:')
-    ) {
-      return callback(null, origin);
+app.use(
+  express.json({
+    limit: '50mb',
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
     }
-  }
+  })
+);
 
-  // 3. Production allow-list check
-  const isAllowed =
-    allowedOrigins.some(allowed => lowerOrigin === allowed.toLowerCase()) ||
-    lowerOrigin.endsWith('.nainatechnologies.in') ||
-    lowerOrigin === 'https://nainatechnologies.in' ||
-    lowerOrigin.endsWith('.ayushbasket.com') ||
-    lowerOrigin === 'https://ayushbasket.com' ||
-    lowerOrigin === 'https://www.ayushbasket.com' ||
-    lowerOrigin === 'http://ayushbasket.com' ||
-    lowerOrigin === 'http://www.ayushbasket.com' ||
-    lowerOrigin.includes('ayushbasket') ||
-    lowerOrigin.endsWith('.railway.app') ||
-    lowerOrigin.endsWith('.vercel.app') ||
-    lowerOrigin.endsWith('.netlify.app') ||
-    process.env.CORS_ALLOW_ALL === 'true';
-
-  if (isAllowed) {
-    return callback(null, origin);
-  }
-
-  // 4. Block unauthorized origin safely without 500 error
-  console.warn(`[CORS] Blocked request from origin: ${origin}`);
-  return callback(null, false);
-};
-
-app.use(cors({
-  origin: corsOriginFn,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: true,
-  preflightContinue: false,   // Automatically responds to OPTIONS preflight requests and ends response
-  optionsSuccessStatus: 204,  // Legacy browsers (IE11, various SmartTVs) choke on 204
-}));
-
-app.use(express.json({ 
-  limit: '50mb',
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
-// Global API Logger Middleware
+// Global API request logger
 // ---------------------------------------------------------------------------
-app.use((req, res, next) => {
+
+app.use((req, _res, next) => {
   if (req.originalUrl.startsWith('/api')) {
     let action = 'API Hit';
-    const path = req.originalUrl.toLowerCase();
+    const requestPath = req.originalUrl.toLowerCase();
 
-    if (path.includes('/api/orders') && req.method === 'POST') action = 'Order placed by Customer';
-    else if (path.includes('/api/orders') && req.method === 'GET') action = 'Orders list accessed';
-    else if (path.includes('/api/cart') && req.method === 'POST') action = 'Item added to Cart by Customer';
-    else if (path.includes('/api/cart') && req.method === 'GET') action = 'Cart viewed by Customer';
-    else if (path.includes('/api/products') && req.method === 'GET') action = 'Products catalog viewed';
-    else if (path.includes('/api/products') && req.method === 'POST') action = 'New Product created by Admin';
-    else if (path.includes('/api/prescriptions') && req.method === 'POST') action = 'Prescription uploaded by Customer';
-    else if (path.includes('/api/prescriptions') && req.method === 'GET') action = 'Prescriptions accessed';
-    else if (path.includes('/api/dashboard')) action = 'Admin Dashboard statistics fetched';
-    else if (path.includes('/api/revenue')) action = 'Admin Revenue analytics fetched';
-    else if (path.includes('/api/auth/login')) action = 'Customer Login Attempt';
-    else if (path.includes('/api/admin/login')) action = 'Admin Login Attempt';
-    else if (path.includes('support') && req.method === 'POST') {
+    if (requestPath.includes('/api/orders') && req.method === 'POST') {
+      action = 'Order placed by Customer';
+    } else if (requestPath.includes('/api/orders') && req.method === 'GET') {
+      action = 'Orders list accessed';
+    } else if (requestPath.includes('/api/cart') && req.method === 'POST') {
+      action = 'Item added to Cart by Customer';
+    } else if (requestPath.includes('/api/cart') && req.method === 'GET') {
+      action = 'Cart viewed by Customer';
+    } else if (requestPath.includes('/api/products') && req.method === 'GET') {
+      action = 'Products catalog viewed';
+    } else if (requestPath.includes('/api/products') && req.method === 'POST') {
+      action = 'New Product created by Admin';
+    } else if (
+      requestPath.includes('/api/prescriptions') &&
+      req.method === 'POST'
+    ) {
+      action = 'Prescription uploaded by Customer';
+    } else if (
+      requestPath.includes('/api/prescriptions') &&
+      req.method === 'GET'
+    ) {
+      action = 'Prescriptions accessed';
+    } else if (requestPath.includes('/api/dashboard')) {
+      action = 'Admin Dashboard statistics fetched';
+    } else if (requestPath.includes('/api/revenue')) {
+      action = 'Admin Revenue analytics fetched';
+    } else if (requestPath.includes('/api/auth/login')) {
+      action = 'Customer Login Attempt';
+    } else if (requestPath.includes('/api/admin/login')) {
+      action = 'Admin Login Attempt';
+    } else if (requestPath.includes('support') && req.method === 'POST') {
       action = 'Support ticket submitted';
     }
-    console.log(`\n=========================================`);
-    console.log(`🔔 [${action}]`);
-    console.log(`   Method: ${req.method} | Endpoint: ${req.originalUrl}`);
-    console.log(`=========================================\n`);
+
+    console.log('\n=========================================');
+    console.log(`[${action}]`);
+    console.log(`Method: ${req.method} | Endpoint: ${req.originalUrl}`);
+    console.log('=========================================\n');
   }
+
   next();
 });
 
 // ---------------------------------------------------------------------------
-// Route Imports
+// Routes
 // ---------------------------------------------------------------------------
+
 const authRoutes = require('./modules/auth/auth.routes');
 const adminAuthRoutes = require('./modules/admin/admin.routes');
 const categoryRoutes = require('./modules/category/category.routes');
@@ -225,10 +222,8 @@ const couponRoutes = require('./modules/coupon/coupon.routes');
 const reviewRoutes = require('./modules/review/review.routes');
 const paymentRoutes = require('./modules/payment/payment.routes');
 
-// ---------------------------------------------------------------------------
-// Root & Health Check Endpoints (Ensures Railway / Cloud deployment checks pass)
-// ---------------------------------------------------------------------------
-app.get('/', (req, res) => {
+// Health check endpoints for hosting platforms
+app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
     service: 'AyushBasket API',
@@ -239,12 +234,13 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', async (_req, res) => {
   let dbStatus = 'ok';
+
   try {
     await sequelize.authenticate();
-  } catch (err) {
-    dbStatus = `disconnected (${err.message})`;
+  } catch (error) {
+    dbStatus = `disconnected (${error.message})`;
   }
 
   res.status(200).json({
@@ -252,13 +248,10 @@ app.get('/api/health', async (req, res) => {
     service: 'AyushBasket API',
     database: dbStatus,
     uptime: `${Math.floor(process.uptime())} seconds`,
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   });
 });
 
-// ---------------------------------------------------------------------------
-// Mount Routes
-// ---------------------------------------------------------------------------
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -278,91 +271,125 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/payments', paymentRoutes);
 
 // ---------------------------------------------------------------------------
-// Static File Serving
+// Static assets
 // ---------------------------------------------------------------------------
-app.use('/uploads', express.static(path.join(__dirname, '../public/assets/uploads')));
+
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '../public/assets/uploads'))
+);
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
 // ---------------------------------------------------------------------------
-// Global Error Handler
+// 404 handler and central error handling
 // ---------------------------------------------------------------------------
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Cannot ${req.method} ${req.originalUrl}`
+  });
+});
+
 const errorHandler = require('./middleware/error.middleware');
 app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
-// Resilient Database Connection & Server Initialization
+// Database connection with retries
 // ---------------------------------------------------------------------------
+
 const connectDBWithRetry = async (maxRetries = 5, delayMs = 3000) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       await sequelize.authenticate();
-      const connTarget = process.env.DATABASE_URL || process.env.MYSQL_URL
-        ? 'cloud database connection'
-        : `${sequelize.config.host}:${sequelize.config.port} / ${sequelize.config.database}`;
-      console.log(`✅  MySQL connected → ${connTarget} via Sequelize`);
-      
+
+      const connTarget =
+        process.env.DATABASE_URL ||
+          process.env.MYSQL_URL ||
+          process.env.MYSQL_PRIVATE_URL ||
+          process.env.MYSQL_PUBLIC_URL
+          ? 'configured cloud database'
+          : `${sequelize.config.host}:${sequelize.config.port}/${sequelize.config.database}`;
+
+      console.log(`MySQL connected: ${connTarget}`);
+
       await syncDB();
       return true;
     } catch (error) {
-      console.error(`⚠️  Database connection attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+      console.error(
+        `Database connection attempt ${attempt}/${maxRetries} failed:`,
+        error.message
+      );
+
       if (attempt < maxRetries) {
-        console.log(`⏳  Retrying in ${delayMs / 1000}s...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      } else {
-        console.error('❌  Could not connect to database after maximum retries.');
-        console.error('👉  If using Hostinger: Verify Remote MySQL allows external IPs (%).');
-        console.error('👉  If using Railway MySQL: Verify MYSQL_URL or set DB_SSL=false.');
+        await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
   }
+
+  console.error('Database connection failed after maximum retries.');
   return false;
 };
 
-const start = async () => {
-  try {
-    // 1. Immediately bind HTTP server to 0.0.0.0:$PORT so Railway port checks succeed instantly
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀  AyushBasket API listening on port ${PORT} (0.0.0.0)`);
-      console.log(`🌍  Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
+// ---------------------------------------------------------------------------
+// Start HTTP server
+// ---------------------------------------------------------------------------
 
-    // 2. Connect to MySQL with automatic retries
-    const dbConnected = await connectDBWithRetry();
-    if (dbConnected) {
-      try {
-        const { User } = require('./models');
-        const bcrypt = require('bcryptjs');
-        const adminAccounts = [
-          { email: 'admin@ayushbasket.com', name: 'Super Admin' },
-          { email: 'ayushbasket.com', name: 'AyushBasket Admin' }
-        ];
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('Admin@123', salt);
-        for (const acc of adminAccounts) {
-          const existing = await User.findOne({ where: { email: acc.email } });
-          if (existing) {
-            existing.password = hashedPassword;
-            existing.role = 'admin';
-            existing.phone = '7569363718';
-            await existing.save();
-          } else {
-            await User.create({
-              name: acc.name,
-              email: acc.email,
-              password: hashedPassword,
-              phone: '7569363718',
-              role: 'admin'
-            });
-          }
+const start = async () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`AyushBasket API listening on 0.0.0.0:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('Allowed browser origins:', [...allowedOrigins]);
+  });
+
+  server.on('error', error => {
+    console.error('[SERVER] HTTP server error:', error);
+    process.exit(1);
+  });
+
+  const dbConnected = await connectDBWithRetry();
+
+  if (!dbConnected) {
+    console.error(
+      'The HTTP server is running, but database-dependent API requests may fail.'
+    );
+  } else {
+    try {
+      const { User } = require('./models');
+      const bcrypt = require('bcryptjs');
+      const adminAccounts = [
+        { email: 'admin@ayushbasket.com', name: 'Super Admin' },
+        { email: 'ayushbasket.com', name: 'AyushBasket Admin' }
+      ];
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('Admin@123', salt);
+      for (const acc of adminAccounts) {
+        const existing = await User.findOne({ where: { email: acc.email } });
+        if (existing) {
+          existing.password = hashedPassword;
+          existing.role = 'admin';
+          existing.phone = '7569363718';
+          await existing.save();
+        } else {
+          await User.create({
+            name: acc.name,
+            email: acc.email,
+            password: hashedPassword,
+            phone: '7569363718',
+            role: 'admin'
+          });
         }
-        console.log('🛡️  Admin credentials verified in database (admin@ayushbasket.com / ayushbasket.com)');
-      } catch (adminErr) {
-        console.warn('⚠️  Could not auto-verify admin accounts:', adminErr.message);
       }
+      console.log('🛡️  Admin credentials verified in database (admin@ayushbasket.com / ayushbasket.com)');
+    } catch (adminErr) {
+      console.warn('⚠️  Could not auto-verify admin accounts:', adminErr.message);
     }
-  } catch (error) {
-    console.error('❌  Fatal Startup Error:', error.message);
   }
 };
 
-start();
+start().catch(error => {
+  console.error('[STARTUP] Fatal error:', error);
+  process.exit(1);
+});
+
+module.exports = app;
