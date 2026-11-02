@@ -32,18 +32,32 @@ const { Op } = require('sequelize');
 
 const loginAdmin = async (identifier, password) => {
   let user;
-  const isEmail = String(identifier).includes('@');
-  if (isEmail) {
-    user = await User.findOne({ where: { email: String(identifier).toLowerCase().trim(), role: 'admin' } });
-  } else {
-    const raw = String(identifier).trim();
-    const digits = raw.replace(/\D/g, '').slice(-10);
-    const phoneVariants = [raw];
-    if (digits && digits.length === 10) {
-      phoneVariants.push(digits, `+91${digits}`, `91${digits}`, `0${digits}`);
-    }
-    user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'admin' } });
+  const raw = String(identifier || '').trim();
+  const cleanId = raw.toLowerCase();
+
+  // Allow email, username ('admin', 'ayushbasket.com'), or direct admin emails
+  const candidateEmails = [cleanId];
+  if (cleanId === 'ayushbasket.com' || cleanId === 'admin') {
+    candidateEmails.push('admin@ayushbasket.com');
+  } else if (cleanId === 'admin@ayushbasket.com') {
+    candidateEmails.push('ayushbasket.com');
   }
+
+  const digits = raw.replace(/\D/g, '').slice(-10);
+  const phoneVariants = [raw];
+  if (digits && digits.length === 10) {
+    phoneVariants.push(digits, `+91${digits}`, `91${digits}`, `0${digits}`);
+  }
+
+  user = await User.findOne({
+    where: {
+      role: 'admin',
+      [Op.or]: [
+        { email: { [Op.in]: candidateEmails } },
+        { phone: { [Op.in]: phoneVariants } }
+      ]
+    }
+  });
 
   if (!user) {
     const error = new Error('Invalid admin credentials.');

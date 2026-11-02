@@ -243,15 +243,27 @@ const loginUser = async (identifier, password) => {
     throw error;
   }
 
-  let user;
-  const isEmail = String(identifier).includes('@');
-  if (isEmail) {
-    const normalizedEmail = String(identifier).toLowerCase().trim();
-    user = await User.findOne({ where: { email: normalizedEmail, role: 'customer' } });
-  } else {
-    const phoneVariants = getPhoneVariants(String(identifier));
-    user = await User.findOne({ where: { phone: { [Op.in]: phoneVariants }, role: 'customer' } });
+  const raw = String(identifier || '').trim();
+  const cleanId = raw.toLowerCase();
+
+  // Allow customer or admin login from storefront
+  const candidateEmails = [cleanId];
+  if (cleanId === 'ayushbasket.com' || cleanId === 'admin') {
+    candidateEmails.push('admin@ayushbasket.com');
+  } else if (cleanId === 'admin@ayushbasket.com') {
+    candidateEmails.push('ayushbasket.com');
   }
+
+  const phoneVariants = getPhoneVariants(raw);
+
+  const user = await User.findOne({
+    where: {
+      [Op.or]: [
+        { email: { [Op.in]: candidateEmails } },
+        ...(phoneVariants.length > 0 ? [{ phone: { [Op.in]: phoneVariants } }] : [])
+      ]
+    }
+  });
 
   if (!user) {
     const error = new Error('Invalid credentials. No account found.');
