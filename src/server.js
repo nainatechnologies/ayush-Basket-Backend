@@ -14,6 +14,33 @@ const envPath = fs.existsSync(path.resolve(__dirname, '../.env'))
 
 require('dotenv').config({ path: envPath });
 
+// ---------------------------------------------------------------------------
+// Security: never run production with the public fallback JWT secret.
+// The old fallback "your_super_secret_jwt_key_here" is in the public repo, so
+// anyone could forge admin tokens if it were used in production.
+// ---------------------------------------------------------------------------
+const DEFAULT_JWT_SECRET = 'your_super_secret_jwt_key_here';
+const configuredJwtSecret = process.env.JWT_SECRET;
+
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!configuredJwtSecret || configuredJwtSecret === DEFAULT_JWT_SECRET)
+) {
+  process.env.JWT_SECRET = require('crypto').randomBytes(48).toString('hex');
+  console.error(
+    '[SECURITY] JWT_SECRET is missing or uses the public default. Generated a temporary secret. ' +
+      'Set a strong JWT_SECRET in Railway, otherwise every restart logs all users out.'
+  );
+} else if (
+  process.env.NODE_ENV === 'production' &&
+  configuredJwtSecret &&
+  configuredJwtSecret.length < 32
+) {
+  console.warn(
+    '[SECURITY] JWT_SECRET is shorter than 32 characters. Use a longer random value.'
+  );
+}
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -64,6 +91,33 @@ const apiLimiter = rateLimit({
 });
 
 app.use('/api', apiLimiter);
+
+// Stricter limit for authentication endpoints: only failed attempts count, so
+// normal logins are not affected but password/OTP guessing is slowed down.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    success: false,
+    message: 'Too many login attempts. Please try again in 15 minutes.'
+  }
+});
+
+app.use(
+  [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/send-registration-otp',
+    '/api/auth/forgot-password',
+    '/api/auth/verify-otp',
+    '/api/auth/reset-password',
+    '/api/admin/login'
+  ],
+  authLimiter
+);
 
 // ---------------------------------------------------------------------------
 // Request logging
@@ -317,23 +371,53 @@ const start = async () => {
         { email: 'admin@ayushbasket.com', name: 'Super Admin' },
         { email: 'ayushbasket.com', name: 'AyushBasket Admin' }
       ];
+      // Only create admins that do not exist yet. Passwords are NOT reset on
+      // every deploy anymore. To rotate a password, set ADMIN_SEED_PASSWORD
+      // for one deploy and remove it afterwards.
+      const seedPassword = process.env.ADMIN_SEED_PASSWORD;
+      const initialPassword = seedPassword || 'Admin@123';
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('Admin@123', salt);
+      let hashedPassword = null;
+      const getHashedPassword = async () => {
+        if (!hashedPassword) {
+          hashedPassword = await bcrypt.hash(initialPassword, salt);
+        }
+        return hashedPassword;
+      };
+
       for (const acc of adminAccounts) {
-        const existing = await User.findOne({ where: { email: acc.email } });
-        if (existing) {
-          existing.password = hashedPassword;
-          existing.role = 'admin';
-          existing.phone = '7569363718';
-          await existing.save();
-        } else {
-          await User.create({
-            name: acc.name,
-            email: acc.email,
-            password: hashedPassword,
-            phone: '7569363718',
-            role: 'admin'
-          });
+        try {
+          const existing = await User.findOne({ where: { email: acc.email } });
+
+          if (!existing) {
+            await User.create({
+              name: acc.name,
+              email: acc.email,
+              password: await getHashedPassword(),
+              phone: '7569363718',
+              role: 'admin'
+            });
+            console.log(`[ADMIN] Created account: ${acc.email}`);
+          } else {
+            let changed = false;
+            if (existing.role !== 'admin') {
+              existing.role = 'admin';
+              changed = true;
+            }
+            if (seedPassword) {
+              existing.password = await getHashedPassword();
+              changed = true;
+            }
+            if (changed) {
+              await existing.save();
+              console.log(`[ADMIN] Updated account: ${acc.email}`);
+            }
+          }
+        } catch (accountError) {
+          console.warn(
+            `[ADMIN] Could not seed ${acc.email}:`,
+            accountError.message
+          );
         }
       }
       console.log('🛡️  Admin credentials verified in database (admin@ayushbasket.com / ayushbasket.com)');
