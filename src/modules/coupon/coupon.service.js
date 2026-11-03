@@ -64,7 +64,8 @@ const validateCouponForCart = async (code, cartTotal) => {
     error.statusCode = 400;
     throw error;
   }
-  if (coupon.validUntil && new Date(coupon.validUntil) < now) {
+  const expiry = coupon.validUntil || coupon.expiryDate;
+  if (expiry && new Date(expiry) < now) {
     const error = new Error('Coupon has expired');
     error.statusCode = 400;
     throw error;
@@ -122,7 +123,25 @@ const deleteCouponById = async (id) => {
 };
 
 const getActiveCoupons = async () => {
-  return await Coupon.findAll({ where: { isActive: true } });
+  const now = new Date();
+  const allActive = await Coupon.findAll({
+    where: { isActive: true },
+    order: [['created_at', 'DESC']]
+  });
+
+  return allActive.filter(coupon => {
+    if (coupon.validFrom && new Date(coupon.validFrom) > now) {
+      return false;
+    }
+    const expiry = coupon.validUntil || coupon.expiryDate;
+    if (expiry && new Date(expiry) < now) {
+      return false;
+    }
+    if (coupon.usageLimit && Number(coupon.usedCount || 0) >= Number(coupon.usageLimit)) {
+      return false;
+    }
+    return true;
+  });
 };
 
 module.exports = {

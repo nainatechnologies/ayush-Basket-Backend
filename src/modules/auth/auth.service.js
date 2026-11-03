@@ -35,6 +35,7 @@ const getPhoneVariants = (phone) => {
     variants.add(`+91${digits}`);
     variants.add(`91${digits}`);
     variants.add(`0${digits}`);
+    variants.add(`+91 ${digits}`);
   } else if (raw) {
     variants.add(raw);
   }
@@ -236,55 +237,86 @@ const registerUser = async (data) => {
   return { user: newUser, token };
 };
 
-const loginUser = async (identifier, password) => {
-  if (!identifier || !password) {
+const loginUser = async (identifier, password, extraPhone = null) => {
+  if ((!identifier && !extraPhone) || !password) {
     const error = new Error('Email or phone number and password are required.');
     error.statusCode = 400;
     throw error;
   }
 
   const raw = String(identifier || '').trim();
-  const cleanId = raw.toLowerCase();
+  const candidateEmails = new Set();
+  const phoneVariants = new Set();
 
-  // Allow customer or admin login from storefront
-  const candidateEmails = [cleanId];
-  if (cleanId === 'ayushbasket.com' || cleanId === 'admin') {
-    candidateEmails.push('admin@ayushbasket.com');
-  } else if (cleanId === 'admin@ayushbasket.com') {
-    candidateEmails.push('ayushbasket.com');
+  const processIdentifier = (val) => {
+    if (!val) return;
+    const s = String(val).trim();
+    if (!s) return;
+    if (s.includes('@')) {
+      candidateEmails.add(s.toLowerCase());
+      if (s.toLowerCase() === 'ayushbasket.com' || s.toLowerCase() === 'admin') {
+        candidateEmails.add('admin@ayushbasket.com');
+      } else if (s.toLowerCase() === 'admin@ayushbasket.com') {
+        candidateEmails.add('ayushbasket.com');
+      }
+    } else {
+      getPhoneVariants(s).forEach(v => phoneVariants.add(v));
+      candidateEmails.add(s.toLowerCase());
+      if (s.toLowerCase() === 'ayushbasket.com' || s.toLowerCase() === 'admin') {
+        candidateEmails.add('admin@ayushbasket.com');
+      }
+    }
+  };
+
+  processIdentifier(raw);
+  if (extraPhone) {
+    processIdentifier(extraPhone);
   }
 
-  const phoneVariants = getPhoneVariants(raw);
+  const emailList = Array.from(candidateEmails);
+  const phoneList = Array.from(phoneVariants);
 
-  const user = await User.findOne({
-    where: {
-      [Op.or]: [
-        { email: { [Op.in]: candidateEmails } },
-        ...(phoneVariants.length > 0 ? [{ phone: { [Op.in]: phoneVariants } }] : [])
-      ]
-    }
+  const orConditions = [];
+  if (emailList.length > 0) {
+    orConditions.push({ email: { [Op.in]: emailList } });
+  }
+  if (phoneList.length > 0) {
+    orConditions.push({ phone: { [Op.in]: phoneList } });
+  }
+
+  const users = await User.findAll({
+    where: { [Op.or]: orConditions }
   });
 
-  if (!user) {
+  if (!users || users.length === 0) {
     const error = new Error('Invalid credentials. No account found.');
     error.statusCode = 401;
     throw error;
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
+  // Iterate over matching accounts to authenticate
+  let matchedUser = null;
+  for (const candidate of users) {
+    const isMatch = await bcrypt.compare(password, candidate.password);
+    if (isMatch) {
+      matchedUser = candidate;
+      break;
+    }
+  }
+
+  if (!matchedUser) {
     const error = new Error('Invalid email/phone or password.');
     error.statusCode = 401;
     throw error;
   }
 
   const token = jwt.sign(
-    { id: user.id, role: user.role },
+    { id: matchedUser.id, role: matchedUser.role },
     process.env.JWT_SECRET,
     { expiresIn: '30d' }
   );
 
-  return { user, token };
+  return { user: matchedUser, token };
 };
 
 const generateForgotPasswordOTP = async (phone) => {

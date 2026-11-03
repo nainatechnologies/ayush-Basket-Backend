@@ -27,7 +27,7 @@ const register = async (req, res) => {
       success: true,
       message: 'Account created successfully.',
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role }
     });
   } catch (error) {
     if (error.statusCode) {
@@ -89,7 +89,7 @@ const sendRegistrationOtp = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
-    const identifier = email || phone || req.body.identifier;
+    const identifier = (req.body.identifier || email || phone || '').trim();
 
     if (!identifier || !password) {
       return res.status(400).json({
@@ -98,7 +98,7 @@ const login = async (req, res) => {
       });
     }
 
-    const { user, token } = await authService.loginUser(identifier, password);
+    const { user, token } = await authService.loginUser(identifier, password, phone);
 
     const cookieOptions = {
       httpOnly: true,

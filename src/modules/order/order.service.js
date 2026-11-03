@@ -441,8 +441,18 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
     else if (rawStatus === 'cancelled') mappedStatus = 'Cancelled';
     else mappedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
 
+    const finalTotalAmount = orderObj.totalAmount !== undefined && orderObj.totalAmount !== null
+      ? Number(orderObj.totalAmount)
+      : (orderObj.total_amount !== undefined && orderObj.total_amount !== null
+        ? Number(orderObj.total_amount)
+        : formattedItems.reduce((acc, curr) => acc + (Number(curr.price || 0) * Number(curr.qty || 1)), 0));
+
+    const totalQty = formattedItems.reduce((acc, curr) => acc + (Number(curr.qty) || 1), 0);
+
     return {
       ...orderObj,
+      total_amount: finalTotalAmount,
+      totalAmount: finalTotalAmount,
       status: mappedStatus,
       mappedStatus,
       rawStatus,
@@ -464,7 +474,8 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
       product: formattedItems.length > 0 ? {
         ...formattedItems[0],
         name: formattedItems.length > 1 ? `${formattedItems[0].name} (+${formattedItems.length - 1} more items)` : formattedItems[0].name,
-        qty: formattedItems.reduce((acc, curr) => acc + curr.qty, 0)
+        price: finalTotalAmount,
+        qty: totalQty
       } : { name: '', shortDesc: '', category: '', price: 0, qty: 0 }
     };
   });
@@ -474,7 +485,20 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
     where: prescriptionWhere.status ? { status: prescriptionWhere.status } : {},
     order: [['created_at', 'DESC']],
     attributes: ['id', 'userId', 'notes', 'medicines', 'patient_name', 'address', 'doctor_name', 'status', 'orderId', 'created_at'],
-    include: [{ model: User, as: 'user', attributes: ['name', 'phone'] }]
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['name', 'phone'],
+        include: [
+          {
+            model: Address,
+            as: 'addresses',
+            attributes: ['flatHouse', 'street', 'city', 'state', 'pincode', 'phone', 'is_default']
+          }
+        ]
+      }
+    ]
   }) : [];
 
   const formattedPrescriptions = prescriptions.map(presc => {
@@ -488,6 +512,12 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
 
     const imgUrl = `${baseUrl}/api/prescriptions/${prescObj.id}/image`;
 
+    let prescAddress = prescObj.address || '';
+    if (!prescAddress && prescObj.user && prescObj.user.addresses && prescObj.user.addresses.length > 0) {
+      const defAddr = prescObj.user.addresses.find(a => a.is_default || a.isDefault) || prescObj.user.addresses[0];
+      prescAddress = `${defAddr.flatHouse ? defAddr.flatHouse + ', ' : ''}${defAddr.street || ''}, ${defAddr.city || ''}, ${defAddr.state || ''} - ${defAddr.pincode || ''}`.replace(/^,\s*/, '').trim();
+    }
+
     return {
       ...prescObj,
       status: mappedStatus,
@@ -497,7 +527,12 @@ const getAllAdminOrders = async (statusFilter, page = 1, limit = 20) => {
       mappedStatus,
       date: prescObj.created_at ? new Date(prescObj.created_at).toLocaleDateString('en-IN') : 'N/A',
       created_at_iso: prescObj.created_at || null,
-      customer: { name: prescObj.user ? prescObj.user.name : '', phone: prescObj.user ? prescObj.user.phone : '', address: '' },
+      customer: {
+        name: prescObj.patient_name || (prescObj.user ? prescObj.user.name : ''),
+        phone: prescObj.user ? prescObj.user.phone : '',
+        address: prescAddress
+      },
+      address: prescAddress,
       payment: { method: '', status: '', transactionId: '' },
       items: [],
       product: { name: 'Prescription', shortDesc: prescObj.notes || '', category: 'Prescription', price: 0, qty: 0, imageUrl: imgUrl, image: imgUrl }

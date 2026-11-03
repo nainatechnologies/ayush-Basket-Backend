@@ -6,7 +6,7 @@
  * Module [product]: product.service
  */
 
-const { Product, Category, WishlistItem, sequelize } = require('../../models');
+const { Product, Category, WishlistItem, Review, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 
 const formatImageUrl = (url) => {
@@ -115,7 +115,12 @@ const getCustomerProducts = async (filters, userId = null) => {
 
   if (category && category !== 'All' && category !== 'null' && category !== 'undefined') {
     if (isNaN(Number(category))) {
-      includeClause[0].where = { name: { [Op.like]: `%${category}%` } };
+      includeClause[0].where = {
+        [Op.or]: [
+          { name: { [Op.like]: `%${category}%` } },
+          { slug: { [Op.like]: `%${category}%` } }
+        ]
+      };
     } else {
       whereClause.categoryId = category;
     }
@@ -133,7 +138,36 @@ const getCustomerProducts = async (filters, userId = null) => {
     userWishlistIds = new Set(wishlistItems.map(item => item.productId));
   }
 
-  return products.map(p => formatProductOutput(p.toJSON(), userWishlistIds));
+  const productIds = products.map(p => p.id);
+  const reviewStats = productIds.length > 0 ? await Review.findAll({
+    where: { productId: { [Op.in]: productIds } },
+    attributes: [
+      'productId',
+      [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
+      [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating']
+    ],
+    group: ['productId'],
+    raw: true
+  }) : [];
+
+  const reviewMap = new Map();
+  reviewStats.forEach(stat => {
+    reviewMap.set(Number(stat.productId), {
+      count: Number(stat.reviewCount) || 0,
+      avg: Number(parseFloat(stat.avgRating || 0).toFixed(1))
+    });
+  });
+
+  return products.map(p => {
+    const formatted = formatProductOutput(p.toJSON(), userWishlistIds);
+    const stats = reviewMap.get(Number(p.id)) || { count: 0, avg: 0 };
+    formatted.reviewsCount = stats.count;
+    if (stats.count > 0 && stats.avg > 0) {
+      formatted.averageRating = stats.avg;
+      formatted.rating = stats.avg;
+    }
+    return formatted;
+  });
 };
 
 const getAdminProductsList = async (filters) => {
@@ -166,7 +200,12 @@ const getAdminProductsList = async (filters) => {
 
   if (category && category !== 'All' && category !== 'null' && category !== 'undefined') {
     if (isNaN(Number(category))) {
-      includeClause[0].where = { name: { [Op.like]: `%${category}%` } };
+      includeClause[0].where = {
+        [Op.or]: [
+          { name: { [Op.like]: `%${category}%` } },
+          { slug: { [Op.like]: `%${category}%` } }
+        ]
+      };
     } else {
       whereClause.categoryId = category;
     }
@@ -239,7 +278,25 @@ const getProductDetails = async (id, userId = null) => {
     if (wishlistItem) userWishlistIds.add(Number(id));
   }
 
-  return formatProductOutput(product.toJSON(), userWishlistIds);
+  const reviewStats = await Review.findAll({
+    where: { productId: id },
+    attributes: [
+      [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
+      [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating']
+    ],
+    raw: true
+  });
+
+  const count = Number(reviewStats[0]?.reviewCount) || 0;
+  const avg = Number(parseFloat(reviewStats[0]?.avgRating || 0).toFixed(1));
+
+  const formatted = formatProductOutput(product.toJSON(), userWishlistIds);
+  formatted.reviewsCount = count;
+  if (count > 0 && avg > 0) {
+    formatted.averageRating = avg;
+    formatted.rating = avg;
+  }
+  return formatted;
 };
 
 const resolveCategoryId = async (category_id) => {
