@@ -24,66 +24,22 @@ const { sequelize, syncDB } = require('./models');
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
+// Railway (like most hosts) terminates TLS at a reverse proxy. Without trusting
+// exactly one proxy hop, Express sees the proxy's IP for every request: the rate
+// limiter would throttle all users as if they were one client, and logs would be
+// useless. `1` means "trust the first proxy in front of the app".
+app.set('trust proxy', 1);
+
 // ---------------------------------------------------------------------------
 // CORS
 // Allow only the deployed storefront/admin domains and explicitly configured
-// origins. FRONTEND_URL and CORS_ORIGIN may contain comma-separated origins.
+// origins. FRONTEND_URL, CORS_ORIGIN and DEV_ORIGINS may contain comma-separated
+// origins. See src/config/cors.js for the full rules.
 // ---------------------------------------------------------------------------
 
-const DEFAULT_ALLOWED_ORIGINS = [
-  'https://ayushbasket.nainatechnologies.in',
-  'https://ayushadmin.nainatechnologies.in',
-  'https://ayushbasket.com',
-  'https://www.ayushbasket.com'
-];
+const { buildCorsConfig } = require('./config/cors');
 
-const configuredOrigins = [
-  process.env.FRONTEND_URL || '',
-  process.env.CORS_ORIGIN || ''
-]
-  .join(',')
-  .split(',')
-  .map(value => value.trim().replace(/\/+$/, ''))
-  .filter(Boolean);
-
-const allowedOrigins = new Set(
-  [...DEFAULT_ALLOWED_ORIGINS, ...configuredOrigins]
-    .map(value => value.toLowerCase())
-);
-
-const corsOptions = {
-  origin(origin, callback) {
-    // Requests without an Origin header (for example, curl or server-to-server)
-    // are not browser cross-origin requests.
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    const lower = origin.toLowerCase();
-    if (
-      allowedOrigins.has(lower) ||
-      lower.endsWith('.nainatechnologies.in') ||
-      lower.endsWith('.ayushbasket.com') ||
-      lower.includes('ayushbasket') ||
-      (process.env.NODE_ENV !== 'production' && (lower.startsWith('http://localhost:') || lower.startsWith('http://127.0.0.1:')))
-    ) {
-      return callback(null, true);
-    }
-
-    console.warn(`[CORS] Rejected origin: ${origin}`);
-    return callback(null, false);
-  },
-  credentials: true,
-  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ],
-  optionsSuccessStatus: 204
-};
+const { allowedOrigins, corsOptions } = buildCorsConfig();
 
 // Register CORS before rate limiting, body parsing, and API routes.
 // The cors middleware responds to browser OPTIONS preflight requests.

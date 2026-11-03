@@ -112,25 +112,43 @@ async function runProductionAudit() {
   const placeholderOrigin = 'https://your-production-url.com';
   const localhostOrigin = 'http://localhost:5173';
 
-  const DEFAULT_PRODUCTION_ORIGINS = ['https://ayushbasket.nainatechnologies.in'];
-  const allowedOrigins = [
-    ...new Set([
-      ...DEFAULT_PRODUCTION_ORIGINS,
-      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()) : [])
-    ])
-  ];
+  // Exercise the exact same CORS implementation the server uses.
+  const { buildCorsConfig } = require('../src/config/cors');
+  const { corsOptions } = buildCorsConfig(
+    { ...process.env, NODE_ENV: 'production' },
+    { warn: () => {} }
+  );
 
-  const isOriginAllowed = (origin) => {
-    if (!origin) return true;
-    const lower = origin.toLowerCase();
-    return allowedOrigins.some(a => lower === a.toLowerCase()) || lower.endsWith('.nainatechnologies.in');
-  };
+  const isOriginAllowed = origin =>
+    new Promise(resolve => {
+      corsOptions.origin(origin, (_error, value) => resolve(Boolean(value)));
+    });
 
-  report('Frontend Origin: ' + prodOrigin, isOriginAllowed(prodOrigin), 'Allowed');
-  report('Subdomain: ' + testSubdomain, isOriginAllowed(testSubdomain), 'Allowed');
-  report('Blocked Origin: ' + disallowedOrigin, !isOriginAllowed(disallowedOrigin), 'Blocked');
-  report('Placeholder Origin: ' + placeholderOrigin, !isOriginAllowed(placeholderOrigin), 'Blocked');
-  report('Localhost in Production: ' + localhostOrigin, !isOriginAllowed(localhostOrigin), 'Blocked');
+  report(
+    'Frontend Origin: ' + prodOrigin,
+    await isOriginAllowed(prodOrigin),
+    'Allowed'
+  );
+  report(
+    'Subdomain: ' + testSubdomain,
+    await isOriginAllowed(testSubdomain),
+    'Allowed'
+  );
+  report(
+    'Blocked Origin: ' + disallowedOrigin,
+    !(await isOriginAllowed(disallowedOrigin)),
+    'Blocked'
+  );
+  report(
+    'Placeholder Origin: ' + placeholderOrigin,
+    !(await isOriginAllowed(placeholderOrigin)),
+    'Blocked'
+  );
+  report(
+    'Localhost in Production: ' + localhostOrigin,
+    !(await isOriginAllowed(localhostOrigin)),
+    'Blocked'
+  );
 
   // ----------------------------------------------------
   // Check 5: Services & Integrations
